@@ -17,7 +17,7 @@ def FeeCalculator(distance, steps):
 
 
 
-def CustomerGeneratorForIP(env, customer_dict, dir=None, end_time=1000,  customer_wait_time = 40, fee = None, lamda = None, add_fee = 0, basic_fee = 3500, steps = []):
+def CustomerGeneratorForIP(env, customer_dict, dir=None, end_time=1000,  customer_wait_time = 40, input_fee = None, lamda = None, add_fee = 0, basic_fee = 3500, steps = []):
     """
     주어진 입력 값에 대한 고객을 생성. 아래 요인들이 중요
     -배송비 책정
@@ -44,14 +44,16 @@ def CustomerGeneratorForIP(env, customer_dict, dir=None, end_time=1000,  custome
         #input('Stop')
         store_loc = [float(data[1]), float(data[2])]
         customer_loc = [float(data[3]), float(data[4])]
-        if fee == None:
-            distance = int(Basic.distance(store_loc, customer_loc))
+        if input_fee == None:
+            #distance = int(Basic.distance(store_loc, customer_loc))
             #input('{} : {} : {}'.format(FeeCalculator(distance, steps), steps, distance))
             #fee = FeeCalculator(distance, steps) + basic_fee #기본 수수료(basic_fee)에 거리마다 계단 형으로 추가 요금이 발생하는 요금제
-            fee = int(Basic.distance(store_loc, customer_loc)/(100*120)) + 3500 #2500
+            #print('거리 {}'.format(Basic.distance(store_loc, customer_loc)))
+            fee = int(Basic.distance(store_loc, customer_loc)*120) + 2500 #2500
         else:
             fee = fee
-        fee += add_fee
+        #fee = add_fee
+        #input('고객 {} 수수료 {}'.format(int(data[0]), fee))
         c = Basic.Customer(env, int(data[0]), input_location = [store_loc, customer_loc], fee= fee, end_time= customer_wait_time, far = int(data[6]))
         customer_dict[int(data[0])] = c
         #print('Time',round(env.now,2) ,'CT#', c.name, 'gen')

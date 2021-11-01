@@ -6,6 +6,9 @@ import gurobipy as gp
 from gurobipy import GRB
 import random
 import subsidyASP as ASP
+import numpy
+
+
 
 def LinearizedSubsidyProblem(driver_set, customers_set, v_old, ro, times, end_times, lower_b = False, upper_b = False, sp=None, print_gurobi=False,  solver=-1, delta = 100, relax = 100):
     """
@@ -197,6 +200,167 @@ def ReviseCoeffAP(selected, others, org_coeff, past_data = [], error = 10):
     except:
         print('Infeasible')
         return False, None
+
+
+def ReviseCoeffAP2(selected, others, org_coeff, past_data = [], Big_M = 1000):
+    """
+    라이더의 가치함수 갱신 문제
+    -> 수정 중
+    :param selected: #선택된 주문 1개의 요소들 [x11,x12,x13]
+    :param others: #선택되지 않은 주문들의 요소들 [[x11,x12,x13],[x21,x22,x23],...,[]]
+    :param org_coeff:현재 coeff
+    :param past_data: 과거 선택들
+    :return:
+    """
+    coeff_indexs = list(range(len(org_coeff)))
+    dummy_indexs = list(range(1 + len(past_data)))
+    # D.V. and model set.
+    m = gp.Model("mip1")
+    w = m.addVars(len(org_coeff), vtype=GRB.CONTINUOUS, name="w")
+    y = m.addVars(1 + len(past_data), vtype = GRB.CONTINUOUS, name= "y")
+    z = m.addVars(len(org_coeff), vtype=GRB.CONTINUOUS, name="z")
+
+    m.setObjective(gp.quicksum(z[i] for i in coeff_indexs) + Big_M*gp.quicksum(y[j] for j in dummy_indexs), GRB.MINIMIZE)
+    m.addConstrs(w[i] <= z[i] for i in coeff_indexs) #linearization part
+    m.addConstrs(w[i]  >= -z[i] for i in coeff_indexs)
+    #m.addConstrs(org_coeff[i] - w[i] <= z[i] for i in coeff_indexs) #linearization part
+    #m.addConstrs(org_coeff[i] - w[i]  >= -z[i] for i in coeff_indexs)
+    dummy_index = 0
+    #이번 selected와 other에 대한 문제 풀이
+    m.addConstr(gp.quicksum((w[i] + org_coeff[i])*selected[i] for i in coeff_indexs) + y[dummy_index] >= 0)
+    for other_info in others:
+        m.addConstr(gp.quicksum((w[i] + org_coeff[i])*selected[i] for i in coeff_indexs) + y[dummy_index]>=
+                    gp.quicksum((w[j] + org_coeff[j])*other_info[j] for j in coeff_indexs))
+    dummy_index += 1
+    #과거 정보를 적층하는 작업
+    if len(past_data) > 0:
+        for data in past_data:
+            p_selected = data[0]
+            p_others = data[1]
+            #print('p_selected',p_selected)
+            #print('p_others',p_others)
+            m.addConstr(gp.quicksum((w[i] + org_coeff[i]) * p_selected[i] for i in coeff_indexs) + y[dummy_index] >= 0)
+            for p_other_info in p_others:
+                #print('p_other_info',p_other_info)
+                m.addConstr(gp.quicksum((w[i] + org_coeff[i])*p_selected[i] for i in coeff_indexs) + y[dummy_index] >=
+                           gp.quicksum((w[j] + org_coeff[j])*p_other_info[j] for j in coeff_indexs))
+            dummy_index += 1
+    #풀이
+    m.optimize()
+    try:
+        print('Obj val: %g' % m.objVal)
+        res = []
+        for val in m.getVars():
+            if val.VarName[0] == 'w':
+                res.append(float(val.x))
+        return True, res
+    except:
+        print('Infeasible')
+        return False, None
+
+
+def LogScore(coeff, vector):
+    score = 0
+    #print('coeff {} vector {} '.format(coeff, vector))
+    for index in range(len(coeff)):
+        try:
+            score += (coeff[index] ** vector[index])*((-1)**index)
+        except:
+            input('스칼라 오류 coeff :{}, vector : {}'.format(coeff, vector))
+    #print('지수 점수 {}'.format(score) )
+    return round(score,4)
+
+
+def ValueCal(coeff, vector, cal_type = 'linear'):
+    if cal_type == 'log':
+        val = LogScore(coeff, vector)
+    elif cal_type == 'linear':
+        val = numpy.dot(coeff, vector)
+    else:
+        val = 0
+        print("Error")
+    return round(val,2)
+
+
+def UpdateGurobiModel(coeff, data, past_data = [], print_para = False, cal_type = 'linear', M = 1000):
+    """
+    주어진 coeff를 새로운 data에 대해 재계산하고 갱신함.
+    Args:
+        coeff: weight vector
+        data: new data [[selected order], [other 1],...,[other n]]
+        past_data: optional [data0, data1,...,data n]
+        print_para: print option
+        cal_type: print option 2
+        M: penalty for slack variable y
+
+    Returns: weight vector
+
+    """
+    #확장형 1.2를 고려한 확장형2
+    w_index = list(range(len(coeff)))
+    # D.V. and model set.
+    model = gp.Model("problem1_3")
+    w = model.addVars(len(coeff), vtype=GRB.CONTINUOUS, name="w")
+    z = model.addVars(len(coeff), vtype=GRB.CONTINUOUS, name="z")
+    y = model.addVars(len(data) + len(past_data), vtype=GRB.CONTINUOUS, name="y")
+
+    model.setObjective(gp.quicksum(z) + M*gp.quicksum(y), GRB.MINIMIZE)
+
+    model.addConstrs(coeff[i] - w[i] <= z[i] for i in w_index) #linearization part
+    model.addConstrs(coeff[i] - w[i]  >= -z[i] for i in w_index)
+
+    z_count = 0 #D_new part
+    if print_para == True:
+        score = ValueCal(coeff, data[0], cal_type=cal_type)
+        print('선택 고객 z {} '.format(score))
+    #print('확인 {} : {}'.format(coeff, data[0]))
+    z_val = ValueCal(coeff, data[0], cal_type=cal_type)
+    data_index = 0
+    for other_info in data[1:]:
+        compare_val = ValueCal(coeff, other_info, cal_type=cal_type)
+        if print_para == True:
+            if z_val < compare_val:
+                print('Current {}-{} 비교 결과 Z : {} < {} : Val'.format(z_count, data_index, z_val, compare_val))
+            else:
+                print('Current {}-{} 비교 결과 Z : {} > {} : Val'.format(z_count, data_index, z_val, compare_val))
+        model.addConstr(gp.quicksum(data[0][i]*(coeff[i] + w[i]) for i in w_index) + y[z_count]
+                    >= gp.quicksum(data[data_index][i]*(coeff[i] + w[i]) for i in w_index))
+        data_index += 1
+    z_count += 1
+    #2 model 수정
+    if len(past_data) > 0:
+        for data in past_data:
+            z_val_old = ValueCal(coeff, data[0], cal_type=cal_type)
+            p_selected = data[0]
+            p_others = data[1:]
+            data_index2 = 0
+            for p_other_info in p_others:
+                compare_val_old = ValueCal(coeff, p_other_info, cal_type=cal_type)
+                if print_para == True:
+                    if z_val_old < compare_val_old:
+                        print('Past {}-{} 비교 결과 Z : {} < {} : Val'.format(z_count, data_index2,  z_val_old, compare_val_old))
+                    else:
+                        print('Past {}-{} 비교 결과 Z : {} > {} : Val'.format(z_count, data_index2, z_val_old, compare_val_old))
+                    pass
+                model.addConstr(gp.quicksum(p_selected[i] * (coeff[i] + w[i]) for i in w_index) + y[z_count]
+                                >= gp.quicksum(p_other_info[i] * (coeff[i] + w[i]) for i in w_index))
+                data_index2 += 1
+            z_count += 1
+    #3 model 풀이
+    model.setParam(GRB.Param.OutputFlag, 0)
+    model.Params.method = -1
+    model.optimize()
+    try:
+        #print('Obj val 출력: %g' % model.objVal)
+        res = []
+        for val in model.getVars():
+            if val.VarName[0] == 'w':
+                res.append(float(val.x))
+        print('결과 {} '.format(res))
+        return True, res, model
+    except:
+        print('Infeasible')
+        return False, None, model
 
 
 def ReviseCoeff_MJ(coeff, now_data, past_data, error = 10):

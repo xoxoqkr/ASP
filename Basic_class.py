@@ -39,7 +39,7 @@ class Customer(object):
         self.wait = wait
         self.far = far
         self.error = 0
-        self.type = random.randrange(1,end_type)
+        self.type = random.randrange(1,end_type) #random.randrange(1,end_type)
         env.process(self.Decline(env))
 
     def Decline(self, env, slack = 10):
@@ -107,9 +107,9 @@ class Rider(object):
         self.CustomerPreference = pref
         self.expect = ExpectedCustomerPreference
         cost_coeff = round(random.uniform(0.8,1.2),1)
-        type_coeff = round(1000*random.uniform(0.8,1.2),1)
+        type_coeff = round(random.uniform(0.8,1.2),1)
         self.coeff = [cost_coeff,type_coeff,1]
-        self.p_coeff = [1,1000,1]
+        self.p_coeff = [0.9,0.4,0.8] #[거리, 타입, 수수료]
         env.process(self.Runner(env, customer_set, toCenter = toCenter, pref = pref_info, save_info = save_info, print_para = print_para))
         env.process(self.RiderLeft(left_time))
 
@@ -122,6 +122,7 @@ class Rider(object):
         yield self.env.timeout(working_time)
         self.left = True
         self.left_time = int(self.env.now)
+        input('라이더 {} 운행 종료 T {}'.format(self.name, self.env.now))
 
 
     def CustomerSelector(self, customer_set, toCenter = True, pref = 'None', save_info = False, value_cal_type = 'return', print_para = False):
@@ -150,23 +151,32 @@ class Rider(object):
                 for info in ava_cts:
                     ava_cts_names.append(info.name)
         if len(ava_cts_class) > 0:
+            print('라이더 선택 시점의 라이더 위치{}'.format(self.last_location))
             #print('고를 수 있는 고객 들 수',len(ava_cts_class))
+            print('라이더 선택 시점의 설정 {} {} {}'.format(toCenter, pref, value_cal_type))
             priority_orders = PriorityOrdering(self, ava_cts_class, toCenter = toCenter, who = pref, save_info = save_info, rider_route_cal_type = value_cal_type)
             priority_orders_biggerthan1 = []
             for info in priority_orders:
                 if info[1] > 0:
                     priority_orders_biggerthan1.append(info)
+            try:
+                print('1등 주문',priority_orders_biggerthan1)
+            except:
+                pass
             #print(priority_orders)
             #print('이득이 되는 고객 들 수', len(priority_orders_biggerthan1))
             #print('rider', self.name,'//Now',round(self.env.now,2),'//un_ct',len(ava_cts),'//candidates', priority_orders[:min(3,len(priority_orders))],'//ava_cts:',ava_cts_names)
             #input('Stop')
             if print_para == True:
-                print("라이더::",self.name,"/이윤 계산결과::",priority_orders[:min(3,len(priority_orders))])
-                print("라이더::",self.name,"/이윤 정보::",priority_orders_biggerthan1[:min(3,len(priority_orders_biggerthan1))])
-            ct = customer_set[priority_orders_biggerthan1[0][0]]
-            print(self.name, 'selects', ct.name, 'at', self.env.now)
-            self.w_data.append([int(self.env.now),ct.name, ava_cts_names])
-            return ct.name, priority_orders_biggerthan1
+                print("라이더::",self.name,"/이윤 계산결과::",priority_orders)
+                print("라이더::",self.name,"/이윤 정보::",priority_orders_biggerthan1)
+            if len(priority_orders_biggerthan1) > 0:
+                ct = customer_set[priority_orders_biggerthan1[0][0]]
+                print(self.name, 'selects', ct.name, 'at', self.env.now)
+                self.w_data.append([int(self.env.now),ct.name, ava_cts_names])
+                return ct.name, priority_orders_biggerthan1
+            else:
+                return None, None
         return None, None
 
 
@@ -209,7 +219,7 @@ class Rider(object):
                 select_time = round(env.now,2)
                 if type(ct_name) == int and ct_name > 0:
                     self.now_ct = ct_name
-                    self.choice.append([ct_name, int(env.now)])
+                    self.choice.append([ct_name, round(env.now,4)])
                     ct = customer_set[ct_name]
                     self.earn_fee.append(ct.fee[1])
                     ct.assigned = True
@@ -218,8 +228,11 @@ class Rider(object):
                     end_time += ((distance(ct.location[0], ct.location[1]) / self.speed) + ct.time_info[7])
                     if int(env.now // 60) >= len(self.fee_analyze):
                         print(env.now, self.fee_analyze)
-                    self.fee_analyze[int(env.now // 60)].append(ct.fee[0])
-                    self.subsidy_analyze[int(env.now // 60)].append(ct.fee[1])
+                    try:
+                        self.fee_analyze[int(env.now // 60)].append(ct.fee[0])
+                        self.subsidy_analyze[int(env.now // 60)].append(ct.fee[1])
+                    except:
+                        pass
                     self.end_time = end_time
                     self.exp_last_location = ct.location[1]
                     #print('Rider', self.name, 'select', ct_name, 'at', env.now, 'EXP T', self.end_time)
@@ -282,7 +295,7 @@ def UnloadedCustomer(customer_set, now_time):
             res.append(customer)
     return res
 
-def CheckTimeFeasiblity(veh, customer, customers, toCenter = True, rider_route_cal_type = 'return', last_location = None):
+def CheckTimeFeasiblity(veh, customer, customers, toCenter = True, rider_route_cal_type = 'return', last_location = None, who = 'driver'):
     """
     입력 받은 차량(veh)가 고객(customer)를 제한 시간 내에 방문할 수 있는지 여부(T/F)와 그 비용을 계산
     :param veh: class Rider
@@ -294,8 +307,16 @@ def CheckTimeFeasiblity(veh, customer, customers, toCenter = True, rider_route_c
     """
     now_time = round(veh.env.now, 1)
     if rider_route_cal_type == 'return':
-        time = CalTime2(veh.last_location, veh.speed, customer, center=customers[0].location[0], toCenter=toCenter,
-                        customer_set=customers)
+        print('예상 시점의 라이더 위치{}'.format(veh.last_location))
+        if who == 'platform':
+            if len(veh.veh.users) == 0:
+                rev_last_location = veh.last_location
+            else:
+                rev_last_location = customers[veh.veh.users[0].info[0]].location[1]
+            print('예상 시점의 라이더 위치 수정 {}'.format(rev_last_location))
+            time = CalTime2(rev_last_location, veh.speed, customer, center=customers[0].location[0], toCenter=toCenter,customer_set=customers)
+        else:
+            time = CalTime2(veh.last_location, veh.speed, customer, center=customers[0].location[0], toCenter=toCenter,customer_set=customers)
     elif rider_route_cal_type == 'no_return':
         time = CalTime2(veh.last_location, veh.speed, customer, center=customer.location[1], toCenter=toCenter,
                         customer_set=customers)
@@ -311,6 +332,7 @@ def CheckTimeFeasiblity(veh, customer, customers, toCenter = True, rider_route_c
     ###이 고객이 자신의 end_time 내에 서비스 받을 수 있는지 계산.###
     t2 = time - distance(customer.location[1], customers[0].location[0]) / veh.speed
     time_para = now_time + t2 < customer.time_info[0] + customer.time_info[5]  # time_para == True인 경우는 해당 고객이 자신의 end_time이전에 서비스 받을 수 있음을 의미.
+    print('고객 {} 기준 비용 {}'.format(customer.name , cost))
     return time_para, cost, round(time,1)
 
 def PriorityOrdering(veh, customers, minus_para = False, toCenter = True, who = 'driver', save_info = False, sort_para = True, rider_route_cal_type = 'return', last_location = None):
@@ -328,25 +350,22 @@ def PriorityOrdering(veh, customers, minus_para = False, toCenter = True, who = 
     """
     res = []
     for customer in customers:
-        time_para, cost, time = CheckTimeFeasiblity(veh, customer, customers, toCenter = toCenter, rider_route_cal_type = rider_route_cal_type, last_location = last_location)
+        time_para, cost, time = CheckTimeFeasiblity(veh, customer, customers, toCenter = toCenter, rider_route_cal_type = rider_route_cal_type, last_location = last_location, who = who)
         fee = customer.fee[0]
         org_cost = copy.deepcopy(cost)
         paid = 0
         if customer.fee[2] == veh.name or customer.fee[2] == 'all':
             fee += customer.fee[1]
             paid += customer.fee[1]
-        ###계산 종료###
-        #print("입렵 값 확인",customer.name, cost)
-        #('R#',veh.name,'//CT#' ,customer.name,'//Fee$',customer.fee[0],paid, int(cost),'//Earn$',int(customer.fee[0] + paid - cost), '//ExpT',now_time + t2,'//EndT',customer.time_info[0] + customer.time_info[5], 'time_para', time_para )
-        #print('check2',fee, cost, time_para)
         cost2 = 0
         if who == 'platform':
             cost2 = veh.error
         elif who == 'test_rider':
+            fee = customer.fee[0]* veh.coeff[2]
             cost2 = customer.type * veh.coeff[1]
             cost = cost*veh.coeff[0]
         elif who == 'test_platform':
-            #cost2 = veh.expect[customer.type]*1000
+            fee = customer.fee[0] * veh.p_coeff[2]
             cost2 = customer.type * veh.p_coeff[1]
             cost = cost*veh.p_coeff[0]
         else:
@@ -359,10 +378,10 @@ def PriorityOrdering(veh, customers, minus_para = False, toCenter = True, who = 
                 res.append([customer.name, int(fee - cost - cost2), int(org_cost), int(fee), time, 'Profit2'])
             else:
                 #print('negative value',int(fee - cost- cost2))
-                res.append([customer.name, 0, 0, 0, time,'N/A1',int(fee - cost - cost2)])
+                res.append([customer.name, int(fee - cost - cost2), int(org_cost), 0, time,'N/A1',int(fee - cost - cost2)])
                 pass
         else:
-            res.append([customer.name,0,0,0, time,'N/A2',int(fee - cost - cost2)])
+            res.append([customer.name,int(fee - cost - cost2),int(org_cost),0, time,'N/A2',int(fee - cost - cost2)])
     if len(res) > 0:
         if sort_para == True:
             res.sort(key=operator.itemgetter(1), reverse = True)

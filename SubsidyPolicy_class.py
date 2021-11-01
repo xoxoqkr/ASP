@@ -191,7 +191,7 @@ def ProblemInput(rider_set, customer_set, now_time, minus_para = True, dummy_cus
     #print('d_orders_res',d_orders_res)
     return v_old, riders, cts_name, d_orders_res, times, end_times
 
-def ExpectedSCustomer(rider_set, rider_names, d_orders_res, customer_set, now_time, toCenter = True, who = 'platform', print_para = False):
+def ExpectedSCustomer(rider_set, rider_names, d_orders_res, customer_set, now_time, toCenter = True, who = 'platform', print_para = False, rider_route_cal_type = 'return'):
     """
     d_orders_res 순서로 rider가 주문을 선택한다고 하였을 때, 선택될 고객들을 계산
     :param rider_set: 라이더 dict
@@ -216,8 +216,23 @@ def ExpectedSCustomer(rider_set, rider_names, d_orders_res, customer_set, now_ti
         #print('rider_name',rider_name)
         rider = rider_set[rider_name]
         last_location = customer_set[rider.now_ct].location[1]
-        ct_infos = Basic.PriorityOrdering(rider, customers, toCenter=toCenter, who=who, rider_route_cal_type= 'next_order', last_location = last_location)
-        #print(ct_infos)
+        print('플랫폼 선택 시점의 설정 {} {} {}'.format(toCenter, who, rider_route_cal_type))
+        ct_infos = Basic.PriorityOrdering(rider, customers, toCenter=toCenter, who=who, rider_route_cal_type= rider_route_cal_type, last_location = last_location)
+        input('플랫폼 예상 정보 확인{}'.format(ct_infos))
+        if len(ct_infos) > 0:
+            info = ct_infos[0]
+            if info[1] > 0:
+                if info[0] not in already_selected:
+                    expected_cts.append(info[0])
+                    already_selected.append(info[0])
+                    add_info.append([rider_name, info[0], info[1]])
+                    test.append([rider_name, ct_infos])
+                    customers.remove(customer_set[info[0]])
+            else:
+                expected_cts.append(None)
+                already_selected.append(None)
+                add_info.append([rider_name, None, None])
+        """
         for info in ct_infos:
             if info[0] not in already_selected and info[1] > 0:
                 expected_cts.append(info[0])
@@ -225,7 +240,8 @@ def ExpectedSCustomer(rider_set, rider_names, d_orders_res, customer_set, now_ti
                 add_info.append([rider_name, info[0], info[1]])
                 test.append([rider_name, ct_infos])
                 customers.remove(customer_set[info[0]])
-                break
+                break        
+        """
         if print_para == True:
             print('라이더 예상 고객은?',rider_name ,"::",test)
     return expected_cts, add_info
