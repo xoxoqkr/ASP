@@ -51,7 +51,7 @@ def InputCalculate2(rider, customer_set, index = -1):
     other_coefficient = []
     """
     rev_infos = []
-    print('Index#',index,'/rider_choice: ',rider.choice_info[index])
+    #print('Index#',index,'/rider_choice: ',rider.choice_info[index])
     for info in rider.choice_info[index][3]:
         ct_name = info[0]
         dist_cost = info[2]
@@ -175,7 +175,7 @@ def SystemRunner(env, rider_set, customer_set, cool_time, interval=10, checker =
         #platform_expected = [[rider_name, 고객 이름],...,]
         yield env.timeout(interval)
         now = round(env.now, 1)
-        print('과거 {} ~ 현재 시점 {}// 라이더 선택드례{}'.format(now - interval, now, rider_set[0].choice))
+        print('과거 {} ~ 현재 시점 {}// 라이더 선택들{}'.format(now - interval, now, rider_set[0].choice))
         print('플랫폼이 예상한 라이더 선택 고객', expected_cts, platform_expected)
         #선택된 라이더들에 대한 가치 함수 갱신
         actual_choice = RiderChoiceWithInterval(rider_set, rider_names, now, interval=interval)
@@ -194,11 +194,11 @@ def SystemRunner(env, rider_set, customer_set, cool_time, interval=10, checker =
                     past_select, past_others = InputCalculate2(rider, customer_set, index=index1) #실제 라이더가 선택할 시점의 [-dist_cost, -type_cost, fee]
                     if len(past_others) > 0:
                         past_choices.append([past_select, past_others])
-                    print("추가되는 사례", len(past_choices))
-                    print('past_choices', past_choices)
+                    #print("추가되는 사례", len(past_choices))
+                    #print('past_choices', past_choices)
                     #input("추가 사례 확인")
                 #input("계산 확인2.")
-                print('선택 됨 {} 그 외 {}'.format(selected, others))
+                #print('선택 됨 {} 그 외 {}'.format(selected, others))
                 #feasibility, res = lpg.ReviseCoeffAP(selected, others, rider.p_coeff, past_data=past_choices)
                 print('정보1{} 정보2{}'.format(selected, others[:2]))
                 feasibility, res = lpg.ReviseCoeffAP2(selected, others, rider.p_coeff, past_data=past_choices)
