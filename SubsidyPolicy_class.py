@@ -216,9 +216,9 @@ def ExpectedSCustomer(rider_set, rider_names, d_orders_res, customer_set, now_ti
         #print('rider_name',rider_name)
         rider = rider_set[rider_name]
         last_location = customer_set[rider.now_ct].location[1]
-        print('플랫폼 선택 시점의 설정 {} {} {}'.format(toCenter, who, rider_route_cal_type))
+        print('T {} 플랫폼 선택 시점의 설정 {} {} {}'.format( rider.env.now , toCenter, who, rider_route_cal_type))
         ct_infos = Basic.PriorityOrdering(rider, customers, toCenter=toCenter, who=who, rider_route_cal_type= rider_route_cal_type, last_location = last_location)
-        input('플랫폼 예상 정보 확인{}'.format(ct_infos))
+        print('플랫폼 예상 정보 확인{}'.format(ct_infos))
         if len(ct_infos) > 0:
             info = ct_infos[0]
             if info[1] > 0:

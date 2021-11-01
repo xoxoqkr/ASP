@@ -110,6 +110,7 @@ class Rider(object):
         type_coeff = round(random.uniform(0.8,1.2),1)
         self.coeff = [cost_coeff,type_coeff,1]
         self.p_coeff = [0.9,0.4,0.8] #[거리, 타입, 수수료]
+        self.past_route = []
         env.process(self.Runner(env, customer_set, toCenter = toCenter, pref = pref_info, save_info = save_info, print_para = print_para))
         env.process(self.RiderLeft(left_time))
 
@@ -153,7 +154,7 @@ class Rider(object):
         if len(ava_cts_class) > 0:
             print('라이더 선택 시점의 라이더 위치{}'.format(self.last_location))
             #print('고를 수 있는 고객 들 수',len(ava_cts_class))
-            print('라이더 선택 시점의 설정 {} {} {}'.format(toCenter, pref, value_cal_type))
+            print('T {} 라이더 선택 시점의 설정 {} {} {}'.format(self.env.now, toCenter, pref, value_cal_type))
             priority_orders = PriorityOrdering(self, ava_cts_class, toCenter = toCenter, who = pref, save_info = save_info, rider_route_cal_type = value_cal_type)
             priority_orders_biggerthan1 = []
             for info in priority_orders:
@@ -219,6 +220,7 @@ class Rider(object):
                 select_time = round(env.now,2)
                 if type(ct_name) == int and ct_name > 0:
                     self.now_ct = ct_name
+                    input('고객 이름{}'.format(self.now_ct))
                     self.choice.append([ct_name, round(env.now,4)])
                     ct = customer_set[ct_name]
                     self.earn_fee.append(ct.fee[1])
@@ -238,6 +240,7 @@ class Rider(object):
                     #print('Rider', self.name, 'select', ct_name, 'at', env.now, 'EXP T', self.end_time)
                     #print('1:', self.last_location, '2:', ct.location)
                     with self.veh.request() as req:
+                        print('라이더 과거 경로',self.past_route[-2:],'고객 경로', ct.location)
                         #print(self.name, 'select', ct.name, 'Time:', env.now)
                         req.info = [ct.name, round(env.now,2)]
                         yield req  # users에 들어간 이후에 작동
@@ -253,6 +256,8 @@ class Rider(object):
                         time += ct.time_info[7]
                         end_time += time
                         self.served.append([ct.name, 0])
+                        self.last_location = ct.location[0]
+                        self.past_route.append(ct.location[0])
                         #print('3:', ct.location[1])
                         yield env.timeout(time)
                         ct.time_info[3] = round(env.now, 2) - ct.time_info[7]
@@ -261,6 +266,7 @@ class Rider(object):
                         ct.server_info = [self.name, round(env.now,2)]
                         self.served.append([ct.name,1])
                         self.last_location = ct.location[1]
+                        self.past_route.append(ct.location[1])
                         #임금 분석
                         print('Rider', self.name, 'done', ct_name, 'at', int(env.now))
                 else:
@@ -307,15 +313,20 @@ def CheckTimeFeasiblity(veh, customer, customers, toCenter = True, rider_route_c
     """
     now_time = round(veh.env.now, 1)
     if rider_route_cal_type == 'return':
-        print('예상 시점의 라이더 위치{}'.format(veh.last_location))
-        if who == 'platform':
+        if who == 'test_platform':
             if len(veh.veh.users) == 0:
                 rev_last_location = veh.last_location
             else:
-                rev_last_location = customers[veh.veh.users[0].info[0]].location[1]
-            print('예상 시점의 라이더 위치 수정 {}'.format(rev_last_location))
+                try:
+                    #rev_last_location = customers[veh.veh.users[0].info[0]].location[1]
+                    rev_last_location = customers[veh.now_ct].location[1]
+                    print('플랫폼 예상 시점의 라이더 위치 수정 {} ::{}'.format(rev_last_location,veh.now_ct))
+                except:
+                    rev_last_location = veh.last_location
+                    print('플랫폼 예상 시점의 라이더 위치 수정XXX {}:: {}'.format(rev_last_location, veh.now_ct))
             time = CalTime2(rev_last_location, veh.speed, customer, center=customers[0].location[0], toCenter=toCenter,customer_set=customers)
         else:
+            print('라이더 시점의 라이더 위치{}'.format(veh.last_location))
             time = CalTime2(veh.last_location, veh.speed, customer, center=customers[0].location[0], toCenter=toCenter,customer_set=customers)
     elif rider_route_cal_type == 'no_return':
         time = CalTime2(veh.last_location, veh.speed, customer, center=customer.location[1], toCenter=toCenter,

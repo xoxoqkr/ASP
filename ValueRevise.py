@@ -208,7 +208,7 @@ def SystemRunner(env, rider_set, customer_set, cool_time, interval=10, checker =
                     print("갱신전::", rider.p_coeff)
                     for index in range(len(res)):
                         rider.p_coeff[index] += res[index]
-                    input('갱신됨::{}'.format(rider.p_coeff))
+                    print('갱신됨::{}'.format(rider.p_coeff))
             pass
         else:
             print("예상과 동일한 선택 수행")
