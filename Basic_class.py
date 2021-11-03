@@ -2,7 +2,7 @@
 #.py 설명 :
 # -> Basic_class.py : 기본 함수
 
-
+import LinearizedASP_gurobi as lpg
 import random
 import simpy
 import math
@@ -57,7 +57,7 @@ class Customer(object):
 class Rider(object):
     def __init__(self, env, name, speed, customer_set, wageForHr = 9000, wait = True, toCenter = True, run_time = 900, error = 0,
                  ExpectedCustomerPreference = [1,1,1,1], pref_info = 'None', save_info = False, left_time = 120, print_para = False,
-                 start_pos = [26,26], value_cal_type = 'return'):
+                 start_pos = [26,26], value_cal_type = 'return',coeff_revise_option = False):
         """
         라이더 class
         :param env: simpy Environment
@@ -108,11 +108,12 @@ class Rider(object):
         self.expect = ExpectedCustomerPreference
         cost_coeff = round(random.uniform(0.8,1.2),1)
         type_coeff = round(random.uniform(0.8,1.2),1)
-        self.coeff = [cost_coeff,type_coeff,1] #[1,1,1]
-        self.p_coeff = [0.9,0.4,0.8] #[1,1,1]#[거리, 타입, 수수료]
+        self.coeff = [cost_coeff,type_coeff,1] #[cost_coeff,type_coeff,1] #[1,1,1]
+        self.p_coeff = [0.9,0.4,0.8] #[0.9,0.4,0.8] #[1,1,1]#[거리, 타입, 수수료]
         self.past_route = []
         self.past_route_info = []
-        env.process(self.Runner(env, customer_set, toCenter = toCenter, pref = pref_info, save_info = save_info, print_para = print_para))
+        self.P_choice_info = []
+        env.process(self.Runner(env, customer_set, toCenter = toCenter, pref = pref_info, save_info = save_info, print_para = print_para,coeff_revise_option = coeff_revise_option))
         env.process(self.RiderLeft(left_time))
 
 
@@ -124,7 +125,7 @@ class Rider(object):
         yield self.env.timeout(working_time)
         self.left = True
         self.left_time = int(self.env.now)
-        input('라이더 {} 운행 종료 T {}'.format(self.name, self.env.now))
+        print('라이더 {} 운행 종료 T {}'.format(self.name, self.env.now))
 
 
     def CustomerSelector(self, customer_set, toCenter = True, pref = 'None', save_info = False, value_cal_type = 'return', print_para = False):
@@ -182,7 +183,7 @@ class Rider(object):
         return None, None
 
 
-    def Runner(self, env, customer_set, wait_time=1, toCenter = True, pref = 'None', save_info = False, print_para = False):
+    def Runner(self, env, customer_set, wait_time=1, toCenter = True, pref = 'None', save_info = False, print_para = False, coeff_revise_option = False):
         """
         라이더의 운행을 표현.
         if 수행할 주문이 있는 경우:
@@ -220,6 +221,28 @@ class Rider(object):
                         pass
                 select_time = round(env.now,2)
                 if type(ct_name) == int and ct_name > 0:
+                    ##라이더 가치함수 갱신이 여기서 수행되어야 함.
+                    # 현재 이 라이더가 보고 있는 주문들에 대해서 플랫폼의 문제를 풀고, 이에 대한 답이 다른 경우에 갱신할 필요가 있음.
+                    if coeff_revise_option == True:
+                        P_ct_name, P_infos = self.CustomerSelector(customer_set, toCenter=toCenter, pref= 'test_platform',
+                                                               save_info=save_info, print_para=True)
+                        if P_ct_name != ct_name:
+                            others = []
+                            for info in infos:
+                                others.append([-info[2], -info[7], info[8]])
+                            selected = copy.deepcopy(others[0])
+                            #input('갱신 문제 시도 {}'.format(others))
+                            if len(others) > 1:
+                                print('갱신 문제 시작 {}:과거 데이터{}'.format(others,self.P_choice_info))
+                                coeff_update_feasibility, res = lpg.ReviseCoeffAP2(selected, others[1:], self.p_coeff, past_data = self.P_choice_info)
+                                self.P_choice_info.append([others[0], others[1:]])
+                                # 계수 갱신
+                                if coeff_update_feasibility == True:
+                                    print("목표::", self.coeff)
+                                    print("갱신전::", self.p_coeff)
+                                    for index in range(len(res)):
+                                        self.p_coeff[index] += res[index]
+                                    print('갱신됨::{}'.format(self.p_coeff))
                     print('고객 이름{}'.format(self.now_ct))
                     self.choice.append([ct_name, round(env.now,4)])
                     ct = customer_set[ct_name]
@@ -319,26 +342,11 @@ def CheckTimeFeasiblity(veh, customer, customers, toCenter = True, rider_route_c
     if rider_route_cal_type == 'return':
         if who == 'test_platform':
             rev_last_location = veh.now_ct[1]
-            """
-            if len(veh.veh.users) == 0:
-                rev_last_location = veh.last_location
-            else:
-                #print('플랫폼이 본 과거 경로',veh.past_route_info[-2:])
-                try:
-                    #rev_last_location = customers[veh.veh.users[0].info[0]].location[1]
-                    rev_last_location = veh.now_ct[1]
-                    #print('대상 위치', veh.now_ct[1])
-                    #print('플랫폼 예상 시점의 라이더 위치 수정 {} ::{}'.format(rev_last_location,veh.now_ct))
-                except:
-                    rev_last_location = veh.last_location
-                    #print('플랫폼 예상 시점의 라이더 위치 수정XXX {}:: {}'.format(rev_last_location, veh.now_ct))            
-            """
             time = CalTime2(rev_last_location, veh.speed, customer, center=[25,25], toCenter=toCenter,customer_set=customers)
-            print('플랫폼 시점의 라이더 위치{}:: 고객이름{} ::복귀{} ::시간{}'.format(rev_last_location, customer.name,  [25,25],time))
+            #print('플랫폼 시점의 라이더 위치{}:: 고객이름{} ::복귀{} ::시간{}'.format(rev_last_location, customer.name,  [25,25],time))
         else:
-            #print('라이더 시점의 라이더 위치{}'.format(veh.last_location))
             time = CalTime2(veh.last_location, veh.speed, customer, center=[25,25], toCenter=toCenter,customer_set=customers)
-            print('라이더 시점의 라이더 위치{}:: 고객이름{} ::복귀{} ::시간{}'.format(veh.last_location,customer.name,  [25,25],time))
+            #print('라이더 시점의 라이더 위치{}:: 고객이름{} ::복귀{} ::시간{}'.format(veh.last_location,customer.name,  [25,25],time))
     elif rider_route_cal_type == 'no_return':
         time = CalTime2(veh.last_location, veh.speed, customer, center=customer.location[1], toCenter=toCenter,
                         customer_set=customers)
@@ -357,7 +365,7 @@ def CheckTimeFeasiblity(veh, customer, customers, toCenter = True, rider_route_c
     #print('고객 {} 기준 비용 {}'.format(customer.name , cost))
     return time_para, cost, round(time,1)
 
-def PriorityOrdering(veh, customers, minus_para = False, toCenter = True, who = 'driver', save_info = False, sort_para = True, rider_route_cal_type = 'return', last_location = None):
+def PriorityOrdering(veh, customers, minus_para = False, toCenter = True, who = 'test_rider', save_info = False, sort_para = True, rider_route_cal_type = 'return', last_location = None):
     """
     veh의 입장에서 customers의 고객들을 가치가 높은 순서대로 정렬한 값을 반환
     :param veh: class rider
@@ -376,9 +384,11 @@ def PriorityOrdering(veh, customers, minus_para = False, toCenter = True, who = 
         fee = customer.fee[0]
         org_cost = copy.deepcopy(cost)
         paid = 0
+        save_fee = customer.fee[0]
         if customer.fee[2] == veh.name or customer.fee[2] == 'all':
             fee += customer.fee[1]
             paid += customer.fee[1]
+            save_fee += customer.fee[1]
         cost2 = 0
         if who == 'platform':
             cost2 = veh.error
@@ -393,17 +403,18 @@ def PriorityOrdering(veh, customers, minus_para = False, toCenter = True, who = 
         else:
             pass
         #print('cost2', cost2,'::', fee - cost- cost2)
+        end_slack_time = veh.env.now - (customer.time_info[0] + customer.time_info[5] + 10)
         if time_para == True:
             if minus_para == True:
-                res.append([customer.name, max(0,int(fee - cost - cost2)), int(org_cost), int(fee), time, 'Profit1',cost, cost2])
+                res.append([customer.name, max(0,int(fee - cost - cost2)), int(org_cost), int(fee), time, 'Profit1',cost, customer.type,save_fee,end_slack_time])
             elif fee > cost + cost2 :
-                res.append([customer.name, int(fee - cost - cost2), int(org_cost), int(fee), time, 'Profit2',cost, cost2])
+                res.append([customer.name, int(fee - cost - cost2), int(org_cost), int(fee), time, 'Profit2',cost, customer.type,save_fee,end_slack_time])
             else:
                 #print('negative value',int(fee - cost- cost2))
-                res.append([customer.name, int(fee - cost - cost2), int(org_cost), int(fee), time,'N/A1',cost, cost2])
+                res.append([customer.name, int(fee - cost - cost2), int(org_cost), int(fee), time,'N/A1',cost, customer.type,save_fee,end_slack_time])
                 pass
         else:
-            res.append([customer.name,int(fee - cost - cost2),int(org_cost),int(fee), time,'N/A2',cost, cost2])
+            res.append([customer.name,int(fee - cost - cost2),int(org_cost),int(fee), time,'N/A2',cost, customer.type, save_fee,end_slack_time])
     if len(res) > 0:
         if sort_para == True:
             res.sort(key=operator.itemgetter(1), reverse = True)

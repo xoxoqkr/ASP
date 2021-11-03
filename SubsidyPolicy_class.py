@@ -141,7 +141,7 @@ def InputValueReform(v_old, times, end_times, customer_num,rider_num,upper, dumm
 
 
 
-def ProblemInput(rider_set, customer_set, now_time, minus_para = True, dummy_customer_para = True, upper = 1500, toCenter = True):
+def ProblemInput(rider_set, customer_set, now_time, minus_para = True, dummy_customer_para = True, upper = 1500, toCenter = True, who = 'test_platform'):
     """
     Monetary Incentive Allocation(SubsidyAllocation)문제를 풀기 위한 input 값을 계산
     :param rider_set:라이더 dict <- 생성된 라이더가 저장되는 dict
@@ -165,7 +165,7 @@ def ProblemInput(rider_set, customer_set, now_time, minus_para = True, dummy_cus
     for rider_name in riders:
         rider = rider_set[rider_name]
         d_orders.append([rider_name, rider.end_time])
-        ct_infos = Basic.PriorityOrdering(rider, cts, toCenter=toCenter, minus_para = minus_para, sort_para = False)
+        ct_infos = Basic.PriorityOrdering(rider, cts, toCenter=toCenter, minus_para = minus_para, sort_para = False, who = who)
         for info in ct_infos:
             customer = customer_set[info[0]]
             values.append(info[1])
@@ -191,7 +191,7 @@ def ProblemInput(rider_set, customer_set, now_time, minus_para = True, dummy_cus
     #print('d_orders_res',d_orders_res)
     return v_old, riders, cts_name, d_orders_res, times, end_times
 
-def ExpectedSCustomer(rider_set, rider_names, d_orders_res, customer_set, now_time, toCenter = True, who = 'platform', print_para = False, rider_route_cal_type = 'return'):
+def ExpectedSCustomer(rider_set, rider_names, d_orders_res, customer_set, now_time, toCenter = True, who = 'platform', print_para = False, rider_route_cal_type = 'return',none_para = False):
     """
     d_orders_res 순서로 rider가 주문을 선택한다고 하였을 때, 선택될 고객들을 계산
     :param rider_set: 라이더 dict
@@ -228,7 +228,7 @@ def ExpectedSCustomer(rider_set, rider_names, d_orders_res, customer_set, now_ti
                     add_info.append([rider_name, info[0], info[1]])
                     test.append([rider_name, ct_infos])
                     customers.remove(customer_set[info[0]])
-            else:
+            elif none_para == True:
                 expected_cts.append(None)
                 already_selected.append(None)
                 add_info.append([rider_name, None, None])
@@ -274,9 +274,10 @@ def SystemRunner(env, rider_set, customer_set, run_time, interval=10, No_subsidy
         # C_p에 해당하는 고객이 이미 선택될 것으로 예상되는 경우
         # 라이더 체크 확인
         un_cts = Basic.UnloadedCustomer(customer_set, env.now)  # 아직 실리지 않은 고객 식별
-        v_old, rider_names, cts_name, d_orders_res, times, end_times = ProblemInput(rider_set, customer_set, env.now, upper=upper, dummy_customer_para = dummy_customer_para)  # 문제의 입력 값을 계산
+        v_old, rider_names, cts_name, d_orders_res, times, end_times = ProblemInput(rider_set, customer_set, env.now, upper=upper, dummy_customer_para = dummy_customer_para, who = 'test_platform')  # 문제의 입력 값을 계산
         urgent_cts, tem1 = Basic.WhoGetPriority(un_cts, len(rider_names), env.now, time_thres=time_thres)  # C_p 계산
         expected_cts, dummy = ExpectedSCustomer(rider_set, rider_names, d_orders_res, customer_set, round(env.now,2) , toCenter = toCenter, who = 'platform')
+        print('T {} 데이터 확인 {} {} {} {}'.format(int(env.now), urgent_cts,expected_cts,rider_names,cts_name))
         if sorted(urgent_cts) == sorted(expected_cts) or len(urgent_cts) == 0 or len(rider_names) <= 1 or len(
                 cts_name) <= 1 or No_subsidy == True:
             print('IP 풀이X', env.now,'급한 고객 수:', len(urgent_cts), '// 예상 매칭 고객 수:', expected_cts)
@@ -291,6 +292,7 @@ def SystemRunner(env, rider_set, customer_set, run_time, interval=10, No_subsidy
             print('V_old', np.shape(v_old), '//Time:', np.shape(times), '//EndTime:', np.shape(end_times))
             res, vars = lpg.LinearizedSubsidyProblem(rider_names, cts_name, v_old, d_orders_res, times, end_times,
                                                      lower_b=0, sp=urgent_cts, print_gurobi=False, upper_b=upper)
+            print('문제 풀림')
             if res == False:
                 time_con_num = list(range(0, len(urgent_cts)))
                 time_con_num.sort(reverse=True)

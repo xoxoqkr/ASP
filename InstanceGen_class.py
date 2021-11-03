@@ -73,7 +73,7 @@ def CustomerGeneratorForIP(env, customer_dict, dir=None, end_time=1000,  custome
 
 def DriverMaker(env, driver_dict, customer_set ,speed = 2, end_time = 800, intervals = [], interval_para = False, interval_res = [],
                 toCenter = True, error = 0, run_time = 900, pref_info = None, driver_left_time = 120, print_para = False,
-                start_pos = [26,26], value_cal_type = 'return', num_gen = 10):
+                start_pos = [26,26], value_cal_type = 'return', num_gen = 10, coeff_revise_option = False):
     """
     주어진 입력값으로 행동하는 라이더를 생성
     :param env: simpy Environment
@@ -96,7 +96,8 @@ def DriverMaker(env, driver_dict, customer_set ,speed = 2, end_time = 800, inter
     name = 0
     while env.now < end_time and name < num_gen:
         rider = Basic.Rider(env, name, speed, customer_set, toCenter = toCenter, error = error, run_time = run_time,
-                            pref_info= pref_info, left_time=driver_left_time, print_para = print_para, start_pos= start_pos, value_cal_type = value_cal_type)
+                            pref_info= pref_info, left_time=driver_left_time, print_para = print_para, start_pos= start_pos,
+                            value_cal_type = value_cal_type, coeff_revise_option = coeff_revise_option)
         driver_dict[name] = rider
         if interval_para == False:
             #print('Hr',intervals[int(env.now//60)])
@@ -107,7 +108,7 @@ def DriverMaker(env, driver_dict, customer_set ,speed = 2, end_time = 800, inter
                 break
             next_time = intervals[name]
         name += 1
-        #print('rider', rider.name, 'gen', env.now)
+        print('T {} rider {} Gen'.format(env.now,rider.name) )
         yield env.timeout(next_time)
 
 

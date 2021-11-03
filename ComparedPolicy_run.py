@@ -25,6 +25,7 @@ toCenter = False
 std_para = False
 value_cal_type = 'no_return' #라이더가 주문의 가치를 계산하는 방법. 돌아오는 지점까지 계산하는지 여부
 rider_start_point = [26,26]#[36,36]
+driver_num = 80
 #2 플랫폼 파라메터
 driver_error_pool = np.random.normal(500, 50, size=100)
 basic_fee = 3000
@@ -70,8 +71,8 @@ for data in datas:
         RIDER_DICT = {}
         CUSTOMER_DICT[0] = Basic_class.Customer(env, 0, input_location=[rider_start_point, rider_start_point])
         env.process(InstanceGen_class.DriverMaker(env, RIDER_DICT, CUSTOMER_DICT, end_time=run_time, speed=speed, intervals= rider_intervals[0], interval_para= True, toCenter = toCenter
-                                                  , start_pos = rider_start_point, value_cal_type = value_cal_type))
-        env.process(InstanceGen_class.CustomerGeneratorForIP(env, CUSTOMER_DICT, data[0] + '.txt', customer_wait_time=customer_wait_time, fee = fee, basic_fee = basic_fee, steps = steps))
+                                                  , start_pos = rider_start_point, value_cal_type = value_cal_type,num_gen=driver_num))
+        env.process(InstanceGen_class.CustomerGeneratorForIP(env, CUSTOMER_DICT, data[0] + '.txt', customer_wait_time=customer_wait_time, basic_fee = basic_fee, steps = steps))
         env.process(ComparedPolicy_class.SystemRunner(env, RIDER_DICT, CUSTOMER_DICT, run_time, interval=solver_running_interval, subsidy_type= data[2], subsidy_offer=subsidy_offer, subsidy_offer_count=subsidy_offer_count))
         env.run(until=run_time)
         ####### 실험 종료 후 결과 저장 ########

@@ -21,14 +21,17 @@ upper = 1500 #보조금 상한 지급액
 checker = False
 print_para = True
 #1 라이더 관련 파라메터
-speed = 2.2
+speed = 2
 wagePerHr = 9000
+driver_left_time = 100
 toCenter = False
 std_para = False
 value_cal_type = 'no_return' #라이더가 주문의 가치를 계산하는 방법. 돌아오는 지점까지 계산하는지 여부
 rider_start_point = [26,26]#[36,36]
+driver_num = 80
 #2 플랫폼 파라메터
 dummy_customer_para = False #라이더가 고객을 선택하지 않는 경우의 input을 추가 하는가?
+coeff_revise_option = True #True : 플랫폼이 파라메터 갱신 시도/ False : 파라메터 갱신 시도 X
 driver_error_pool = np.random.normal(500, 50, size=100)
 basic_fee = 2500
 steps = []
@@ -77,9 +80,10 @@ for data in datas:
         RIDER_DICT = {}
         CUSTOMER_DICT[0] = Basic_class.Customer(env, 0, input_location=[rider_start_point, rider_start_point])
         env.process(InstanceGen_class.DriverMaker(env, RIDER_DICT, CUSTOMER_DICT, end_time=run_time, speed=speed, intervals= rider_intervals[0],
-                                                  interval_para= True, toCenter = toCenter, run_time= run_time, error= np.random.choice(driver_error_pool),
-                                                  print_para = print_para, start_pos = rider_start_point, value_cal_type = value_cal_type))
-        env.process(InstanceGen_class.CustomerGeneratorForIP(env, CUSTOMER_DICT, data[0] + '.txt', customer_wait_time=customer_wait_time, fee = fee, basic_fee = basic_fee, steps = steps))
+                                                  interval_para= True, toCenter = toCenter, run_time= run_time, error= np.random.choice(driver_error_pool), driver_left_time = driver_left_time,
+                                                  print_para = print_para, start_pos = rider_start_point, value_cal_type = value_cal_type,coeff_revise_option = coeff_revise_option,
+                                                  num_gen=driver_num))
+        env.process(InstanceGen_class.CustomerGeneratorForIP(env, CUSTOMER_DICT, data[0] + '.txt', customer_wait_time=customer_wait_time, basic_fee = basic_fee, steps = steps))
         env.process(SubsidyPolicy_class.SystemRunner(env, RIDER_DICT, CUSTOMER_DICT, run_time, interval=solver_running_interval, No_subsidy = data[1],
                                                      subsidy_offer=subsidy_offer, subsidy_offer_count = subsidy_offer_count, upper = upper,
                                                      checker= checker, toCenter = toCenter, dummy_customer_para = dummy_customer_para))
