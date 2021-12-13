@@ -161,7 +161,7 @@ def RiderChoiceWithInterval(rider_set, rider_names, now, interval = 10):
     return actual_choice
 
 
-def SystemRunner(env, rider_set, customer_set, cool_time, interval=10, checker = False, toCenter = True, rider_route_cal_type = 'return'):
+def SystemRunner(env, rider_set, customer_set, cool_time, ox_table ,interval=10, checker = False, toCenter = True, rider_route_cal_type = 'return', weight_sum = False):
     # 보조금 부문을 제외하고 단순하게 작동하는 것으로 시험해 볼 것.
     while env.now <= cool_time:
         #플랫폼이 예상한 라이더-고객 선택
@@ -179,7 +179,11 @@ def SystemRunner(env, rider_set, customer_set, cool_time, interval=10, checker =
         print('플랫폼이 예상한 라이더 선택 고객', expected_cts, platform_expected)
         #선택된 라이더들에 대한 가치 함수 갱신
         actual_choice = RiderChoiceWithInterval(rider_set, rider_names, now, interval=interval)
+        platform_expected.sort(key=operator.itemgetter(0))
+        actual_choice.sort(key=operator.itemgetter(0))
         expectation, actual = Comapre2List(platform_expected, actual_choice)
+        #ox_table_save
+
         print("차이발생/T now:",now,"/예상한 선택", expectation , "/실제 선택", actual, "/실제선택2:",actual_choice)
         if len(expectation) > 0:
             print("라이더가 예상과 다른 고객 선택")
@@ -201,17 +205,23 @@ def SystemRunner(env, rider_set, customer_set, cool_time, interval=10, checker =
                 #print('선택 됨 {} 그 외 {}'.format(selected, others))
                 #feasibility, res = lpg.ReviseCoeffAP(selected, others, rider.p_coeff, past_data=past_choices)
                 print('정보1{} 정보2{}'.format(selected, others[:2]))
-                feasibility, res = lpg.ReviseCoeffAP2(selected, others, rider.p_coeff, past_data=past_choices)
+                feasibility, res = lpg.ReviseCoeffAP2(selected, others, rider.p_coeff, past_data=past_choices, weight_sum = weight_sum)
                 # 계수 갱신
                 if feasibility == True:
                     print("목표::", rider.coeff)
                     print("갱신전::", rider.p_coeff)
+                    revise_value = 0
                     for index in range(len(res)):
                         rider.p_coeff[index] += res[index]
-                    print('갱신됨::{}'.format(rider.p_coeff))
+                        revise_value += abs(res[index])
+                    if revise_value > 0:
+                        print('갱신됨::{}'.format(rider.p_coeff))
+                        rider.p_history.append(copy.deepcopy(rider.p_coeff))
+            pass
+        elif False:
             pass
         else:
-            print("예상과 동일한 선택 수행")
+            print('예상과 동일한 선택 수행/ T:{}'.format(int(env.now)))
         # 보조금 초기화
         Basic.InitializeSubsidy(customer_set)  # 보조금 초기화
         Basic.DefreezeAgent(rider_set, type='rider')  # 라이더 반영

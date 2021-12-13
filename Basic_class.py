@@ -57,7 +57,7 @@ class Customer(object):
 class Rider(object):
     def __init__(self, env, name, speed, customer_set, wageForHr = 9000, wait = True, toCenter = True, run_time = 900, error = 0,
                  ExpectedCustomerPreference = [1,1,1,1], pref_info = 'None', save_info = False, left_time = 120, print_para = False,
-                 start_pos = [26,26], value_cal_type = 'return',coeff_revise_option = False):
+                 start_pos = [26,26], value_cal_type = 'return',coeff_revise_option = False, weight_sum = False):
         """
         라이더 class
         :param env: simpy Environment
@@ -106,14 +106,15 @@ class Rider(object):
         random.shuffle(pref)
         self.CustomerPreference = pref
         self.expect = ExpectedCustomerPreference
-        cost_coeff = round(random.uniform(0.8,1.2),1)
-        type_coeff = round(random.uniform(0.8,1.2),1)
+        cost_coeff = round(random.uniform(0.7,1.3),1)
+        type_coeff = 3 - (1 + cost_coeff) #round(random.uniform(0.8,1.2),1)
         self.coeff = [cost_coeff,type_coeff,1] #[cost_coeff,type_coeff,1] #[1,1,1]
-        self.p_coeff = [0.9,0.4,0.8] #[0.9,0.4,0.8] #[1,1,1]#[거리, 타입, 수수료]
+        self.p_coeff = [0.7,1.5,0.8] #[0.9,0.4,0.8] #[1,1,1]#[거리, 타입, 수수료]
         self.past_route = []
         self.past_route_info = []
         self.P_choice_info = []
-        env.process(self.Runner(env, customer_set, toCenter = toCenter, pref = pref_info, save_info = save_info, print_para = print_para,coeff_revise_option = coeff_revise_option))
+        self.p_history = [copy.deepcopy(self.p_coeff)]
+        env.process(self.Runner(env, customer_set, toCenter = toCenter, pref = pref_info, save_info = save_info, print_para = print_para,coeff_revise_option = coeff_revise_option, weight_sum= weight_sum))
         env.process(self.RiderLeft(left_time))
 
 
@@ -183,7 +184,7 @@ class Rider(object):
         return None, None
 
 
-    def Runner(self, env, customer_set, wait_time=1, toCenter = True, pref = 'None', save_info = False, print_para = False, coeff_revise_option = False):
+    def Runner(self, env, customer_set, wait_time=1, toCenter = True, pref = 'None', save_info = False, print_para = False, coeff_revise_option = False, weight_sum = False):
         """
         라이더의 운행을 표현.
         if 수행할 주문이 있는 경우:
@@ -234,7 +235,7 @@ class Rider(object):
                             #input('갱신 문제 시도 {}'.format(others))
                             if len(others) > 1:
                                 print('갱신 문제 시작 {}:과거 데이터{}'.format(others,self.P_choice_info))
-                                coeff_update_feasibility, res = lpg.ReviseCoeffAP2(selected, others[1:], self.p_coeff, past_data = self.P_choice_info)
+                                coeff_update_feasibility, res = lpg.ReviseCoeffAP2(selected, others[1:], self.p_coeff, past_data = self.P_choice_info, weight_sum = weight_sum)
                                 self.P_choice_info.append([others[0], others[1:]])
                                 # 계수 갱신
                                 if coeff_update_feasibility == True:

@@ -202,7 +202,7 @@ def ReviseCoeffAP(selected, others, org_coeff, past_data = [], error = 10):
         return False, None
 
 
-def ReviseCoeffAP2(selected, others, org_coeff, past_data = [], Big_M = 1000):
+def ReviseCoeffAP2(selected, others, org_coeff, past_data = [], Big_M = 1000, weight_sum = False):
     """
     라이더의 가치함수 갱신 문제
     -> 수정 중
@@ -226,6 +226,10 @@ def ReviseCoeffAP2(selected, others, org_coeff, past_data = [], Big_M = 1000):
     #m.addConstrs(org_coeff[i] - w[i] <= z[i] for i in coeff_indexs) #linearization part
     #m.addConstrs(org_coeff[i] - w[i]  >= -z[i] for i in coeff_indexs)
     dummy_index = 0
+    #계수 합 관련
+    if weight_sum == True:
+        m.addConstrs(w[i] + org_coeff[i] >= 0 for i in coeff_indexs)
+        m.addConstr(gp.quicksum((w[i] + org_coeff[i]) for i in coeff_indexs) == 3)
     #이번 selected와 other에 대한 문제 풀이
     m.addConstr(gp.quicksum((w[i] + org_coeff[i])*selected[i] for i in coeff_indexs) + y[dummy_index] >= 0)
     for other_info in others:
