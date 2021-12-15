@@ -119,19 +119,25 @@ def ChoiceCheck(rider, customer_set):
     return None
 
 
-def Comapre2List(base, compare):
+def Comapre2List(base, compare, ox_table):
     #base에는 있으나, compare는 없는 요소 찾기.
+    base.sort(key=operator.itemgetter(0))
+    compare.sort(key=operator.itemgetter(0))
     expectation = []
     actual = []
     for info1 in base:
+        ox_table[0] += 1
         for info2 in compare:
             if info1[0] == info2[0]:
                 if info1[1] == info2[1]:
+                    ox_table[1] += 1
+                    ox_table[3] += 1
                     pass
                 else:
                     expectation.append(info1)
                     actual.append(info2)
                 break
+    ox_table[2] += len(compare)
     return expectation, actual
 
 
@@ -161,7 +167,7 @@ def RiderChoiceWithInterval(rider_set, rider_names, now, interval = 10):
     return actual_choice
 
 
-def SystemRunner(env, rider_set, customer_set, cool_time, ox_table ,interval=10, checker = False, toCenter = True, rider_route_cal_type = 'return', weight_sum = False):
+def SystemRunner(env, rider_set, customer_set, cool_time, ox_table ,interval=10, checker = False, toCenter = True, rider_route_cal_type = 'return', weight_sum = False, revise = False):
     # 보조금 부문을 제외하고 단순하게 작동하는 것으로 시험해 볼 것.
     while env.now <= cool_time:
         #플랫폼이 예상한 라이더-고객 선택
@@ -179,11 +185,8 @@ def SystemRunner(env, rider_set, customer_set, cool_time, ox_table ,interval=10,
         print('플랫폼이 예상한 라이더 선택 고객', expected_cts, platform_expected)
         #선택된 라이더들에 대한 가치 함수 갱신
         actual_choice = RiderChoiceWithInterval(rider_set, rider_names, now, interval=interval)
-        platform_expected.sort(key=operator.itemgetter(0))
-        actual_choice.sort(key=operator.itemgetter(0))
-        expectation, actual = Comapre2List(platform_expected, actual_choice)
+        expectation, actual = Comapre2List(platform_expected, actual_choice, ox_table)
         #ox_table_save
-
         print("차이발생/T now:",now,"/예상한 선택", expectation , "/실제 선택", actual, "/실제선택2:",actual_choice)
         if len(expectation) > 0:
             print("라이더가 예상과 다른 고객 선택")
@@ -205,11 +208,13 @@ def SystemRunner(env, rider_set, customer_set, cool_time, ox_table ,interval=10,
                 #print('선택 됨 {} 그 외 {}'.format(selected, others))
                 #feasibility, res = lpg.ReviseCoeffAP(selected, others, rider.p_coeff, past_data=past_choices)
                 print('정보1{} 정보2{}'.format(selected, others[:2]))
-                feasibility, res = lpg.ReviseCoeffAP2(selected, others, rider.p_coeff, past_data=past_choices, weight_sum = weight_sum)
-                # 계수 갱신
-                if feasibility == True:
+                if revise == True:
+                    feasibility, res = lpg.ReviseCoeffAP2(selected, others, rider.p_coeff, past_data=past_choices, weight_sum = weight_sum)
+                    # 계수 갱신
+                if revise == True and feasibility == True:
                     print("목표::", rider.coeff)
                     print("갱신전::", rider.p_coeff)
+                    print("res::", res)
                     revise_value = 0
                     for index in range(len(res)):
                         rider.p_coeff[index] += res[index]

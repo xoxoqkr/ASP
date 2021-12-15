@@ -6,6 +6,7 @@ import operator
 import numpy as np
 import LinearizedASP_gurobi as lpg
 import Basic_class as Basic
+import copy
 
 def indexReturner2DBiggerThan0(list2D, val = 0):
     """
@@ -247,7 +248,7 @@ def ExpectedSCustomer(rider_set, rider_names, d_orders_res, customer_set, now_ti
     return expected_cts, add_info
 
 def SystemRunner(env, rider_set, customer_set, run_time, interval=10, No_subsidy=False, subsidy_offer=[],
-                 subsidy_offer_count=[], time_thres=0.8, upper=10000, checker=False, toCenter=True, dummy_customer_para = False):
+                 subsidy_offer_count=[], time_thres=0.8, upper=10000, checker=False, toCenter=True, dummy_customer_para = False,weight_sum=3):
     """
     입력 값에 따라 시뮬레이션 진행
     No_subsidy에 따라 2가지 상황이 가능.
@@ -318,6 +319,37 @@ def SystemRunner(env, rider_set, customer_set, run_time, interval=10, No_subsidy
         Basic.InitializeSubsidy(customer_set) # 보조금 초기화
         Basic.DefreezeAgent(rider_set, type = 'rider') #라이더 반영
         Basic.DefreezeAgent(customer_set, type = 'customer') #고객 반영
+
+        # updater
+        """
+        for rider_name in rider_set:
+            rider = rider_set[rider_name]
+            selected, others = InputCalculate2(rider, customer_set)  # 실제 라이더가 선택한 고객의 [-dist_cost, -type_cost, fee]
+            # ChoiceCheck(rider, customer_set)
+            past_choices = []
+            indexs = list(range(len(rider.choice_info) - 1))
+            indexs.reverse()
+            for index1 in indexs:
+                past_select, past_others = InputCalculate2(rider, customer_set,
+                                                           index=index1)  # 실제 라이더가 선택할 시점의 [-dist_cost, -type_cost, fee]
+                if len(past_others) > 0:
+                    past_choices.append([past_select, past_others])
+            print('정보1{} 정보2{}'.format(selected, others[:2]))
+            feasibility, res = lpg.ReviseCoeffAP2(selected, others, rider.p_coeff, past_data=past_choices,
+                                                  weight_sum=weight_sum)
+            # 계수 갱신
+            if feasibility == True:
+                print("목표::", rider.coeff)
+                print("갱신전::", rider.p_coeff)
+                revise_value = 0
+                for index in range(len(res)):
+                    rider.p_coeff[index] += res[index]
+                    revise_value += abs(res[index])
+                if revise_value > 0:
+                    print('갱신됨::{}'.format(rider.p_coeff))
+                    rider.p_history.append(copy.deepcopy(rider.p_coeff))        
+        """
+
         if checker == False:
             print('Sys Run/T:' + str(env.now))
         else:
