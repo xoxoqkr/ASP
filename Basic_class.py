@@ -39,7 +39,7 @@ class Customer(object):
         self.wait = wait
         self.far = far
         self.error = 0
-        self.type = random.randrange(1,end_type) #random.randrange(1,end_type)
+        self.type = random.choice([500,750,1000])#random.randrange(1,end_type) #random.randrange(1,end_type)
         env.process(self.Decline(env))
 
     def Decline(self, env, slack = 10):
@@ -109,7 +109,7 @@ class Rider(object):
         cost_coeff = round(random.uniform(0.7,1.3),1)
         type_coeff = 3 - (1 + cost_coeff) #round(random.uniform(0.8,1.2),1)
         self.coeff = [cost_coeff,type_coeff,1] #[cost_coeff,type_coeff,1] #[1,1,1]
-        self.p_coeff = [1,1,1] #[0.9,0.4,0.8] #[1,1,1]#[거리, 타입, 수수료]
+        self.p_coeff = [0.5,2,0.5] #[0.9,0.4,0.8] #[1,1,1]#[거리, 타입, 수수료]
         self.past_route = []
         self.past_route_info = []
         self.P_choice_info = []
