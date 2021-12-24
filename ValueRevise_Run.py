@@ -9,8 +9,8 @@ import ValueRevise
 
 #파라메터
 speed = 2
-toCenter = True
-customer_wait_time = 90
+toCenter = False
+customer_wait_time = 800
 fee = None
 data_dir = '데이터/new_data_2_RandomCluster'
 rider_intervals = InstanceGen_class.RiderGenInterval('데이터/interval_rider_data3.csv')
@@ -20,7 +20,7 @@ add_fee = 1500
 driver_left_time = 800
 driver_make_time = 200
 steps = [[]]
-driver_num = 3
+driver_num = 1
 weight_sum = True
 
 revise_para = True

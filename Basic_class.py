@@ -11,7 +11,7 @@ import copy
 
 
 class Customer(object):
-    def __init__(self, env, name, input_location, end_time = 60, ready_time=2, service_time=1, fee = 1000,wait = True, far = 0, end_type = 4):
+    def __init__(self, env, name, input_location, end_time = 800, ready_time=2, service_time=1, fee = 1000,wait = True, far = 0, end_type = 4):
         """
         고객 class
         :param env: simpy Environment
@@ -39,7 +39,7 @@ class Customer(object):
         self.wait = wait
         self.far = far
         self.error = 0
-        self.type = random.choice([500,750,1000])#random.randrange(1,end_type) #random.randrange(1,end_type)
+        self.type = random.choice([0,1,2,3]) #[0,1,2,3]#random.randrange(1,end_type) #random.randrange(1,end_type)
         env.process(self.Decline(env))
 
     def Decline(self, env, slack = 10):
@@ -56,7 +56,7 @@ class Customer(object):
 
 class Rider(object):
     def __init__(self, env, name, speed, customer_set, wageForHr = 9000, wait = True, toCenter = True, run_time = 900, error = 0,
-                 ExpectedCustomerPreference = [1,1,1,1], pref_info = 'None', save_info = False, left_time = 120, print_para = False,
+                 ExpectedCustomerPreference = [0,250,500,750], pref_info = 'None', save_info = False, left_time = 120, print_para = False,
                  start_pos = [26,26], value_cal_type = 'return',coeff_revise_option = False, weight_sum = False):
         """
         라이더 class
@@ -106,10 +106,10 @@ class Rider(object):
         random.shuffle(pref)
         self.CustomerPreference = pref
         self.expect = ExpectedCustomerPreference
-        cost_coeff = round(random.uniform(0.7,1.3),1)
-        type_coeff = 3 - (1 + cost_coeff) #round(random.uniform(0.8,1.2),1)
-        self.coeff = [cost_coeff,type_coeff,1] #[cost_coeff,type_coeff,1] #[1,1,1]
-        self.p_coeff = [0.5,2,0.5] #[0.9,0.4,0.8] #[1,1,1]#[거리, 타입, 수수료]
+        cost_coeff = round(random.uniform(0.3,1.0),1)
+        type_coeff = 3 - (1.5 + cost_coeff) #round(random.uniform(0.8,1.2),1)
+        self.coeff = [cost_coeff,type_coeff,1.5] #[cost_coeff,type_coeff,1] #[1,1,1]
+        self.p_coeff = [0,0,3] #[0.9,0.4,0.8] #[1,1,1]#[거리, 타입, 수수료]
         self.past_route = []
         self.past_route_info = []
         self.P_choice_info = []
@@ -395,11 +395,11 @@ def PriorityOrdering(veh, customers, minus_para = False, toCenter = True, who = 
             cost2 = veh.error
         elif who == 'test_rider':
             fee = customer.fee[0]* veh.coeff[2]
-            cost2 = customer.type * veh.coeff[1]
+            cost2 = veh.expect[customer.type] * veh.coeff[1]
             cost = cost*veh.coeff[0]
         elif who == 'test_platform':
             fee = customer.fee[0] * veh.p_coeff[2]
-            cost2 = customer.type * veh.p_coeff[1]
+            cost2 = veh.expect[customer.type] * veh.p_coeff[1]
             cost = cost*veh.p_coeff[0]
         else:
             pass
@@ -407,7 +407,7 @@ def PriorityOrdering(veh, customers, minus_para = False, toCenter = True, who = 
         end_slack_time = veh.env.now - (customer.time_info[0] + customer.time_info[5] + 10)
         if time_para == True:
             if minus_para == True:
-                res.append([customer.name, max(0,int(fee - cost - cost2)), int(org_cost), int(fee), time, 'Profit1',cost, customer.type,save_fee,end_slack_time])
+                res.append([customer.name, max(0,int(fee - cost - cost2)), int(org_cost), int(fee), time, 'Profit1',cost, customer.type,save_fee,end_slack_time],)
             elif fee > cost + cost2 :
                 res.append([customer.name, int(fee - cost - cost2), int(org_cost), int(fee), time, 'Profit2',cost, customer.type,save_fee,end_slack_time])
             else:
@@ -416,6 +416,7 @@ def PriorityOrdering(veh, customers, minus_para = False, toCenter = True, who = 
                 pass
         else:
             res.append([customer.name,int(fee - cost - cost2),int(org_cost),int(fee), time,'N/A2',cost, customer.type, save_fee,end_slack_time])
+        res[-1].append(cost2)
     if len(res) > 0:
         if sort_para == True:
             res.sort(key=operator.itemgetter(1), reverse = True)

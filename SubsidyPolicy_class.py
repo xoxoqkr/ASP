@@ -233,6 +233,8 @@ def ExpectedSCustomer(rider_set, rider_names, d_orders_res, customer_set, now_ti
                 expected_cts.append(None)
                 already_selected.append(None)
                 add_info.append([rider_name, None, None])
+            else:
+                pass
         """
         for info in ct_infos:
             if info[0] not in already_selected and info[1] > 0:

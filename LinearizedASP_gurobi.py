@@ -212,29 +212,39 @@ def ReviseCoeffAP2(selected, others, org_coeff, past_data = [], Big_M = 1000, we
     :param past_data: 과거 선택들
     :return:
     """
+    weight_direction = [1,1,1]
     coeff_indexs = list(range(len(org_coeff)))
     dummy_indexs = list(range(1 + len(past_data)))
+    max_data_size = [1 + len(others)]
+    for info in past_data:
+        max_data_size.append(1 + len(info[1]))
+    max_data_size = max(max_data_size)
+    error_term_indexs = list(range(max_data_size))
     # D.V. and model set.
     m = gp.Model("mip1")
     w = m.addVars(len(org_coeff), vtype=GRB.CONTINUOUS, name="w")
-    y = m.addVars(1 + len(past_data), vtype = GRB.CONTINUOUS, name= "y")
+    y = m.addVars(1 + len(past_data), max_data_size, vtype = GRB.CONTINUOUS, name= "y")
     z = m.addVars(len(org_coeff), vtype=GRB.CONTINUOUS, name="z")
-
-    m.setObjective(gp.quicksum(z[i] for i in coeff_indexs) + Big_M*gp.quicksum(y[j] for j in dummy_indexs), GRB.MINIMIZE)
-    m.addConstrs(w[i] <= z[i] for i in coeff_indexs) #linearization part
-    m.addConstrs(w[i]  >= -z[i] for i in coeff_indexs)
+    #print(y)
+    #input('확인')
+    m.setObjective(gp.quicksum(z[i] for i in coeff_indexs) + Big_M*gp.quicksum(y[i,j] for i in dummy_indexs for j in error_term_indexs), GRB.MINIMIZE)
+    m.addConstrs((w[i] <= z[i] for i in coeff_indexs), name= 'c1') #linearization part
+    m.addConstrs((w[i]  >= -z[i] for i in coeff_indexs), name = 'c2')
     #m.addConstrs(org_coeff[i] - w[i] <= z[i] for i in coeff_indexs) #linearization part
     #m.addConstrs(org_coeff[i] - w[i]  >= -z[i] for i in coeff_indexs)
     dummy_index = 0
+    error_term_index = 0
     #계수 합 관련
     if weight_sum == True:
-        m.addConstrs(w[i] + org_coeff[i] >= 0 for i in coeff_indexs)
-        m.addConstr(gp.quicksum((w[i] + org_coeff[i]) for i in coeff_indexs) == 3)
+        m.addConstrs((w[i] + org_coeff[i] >= 0 for i in coeff_indexs), name = 'c3')
+        m.addConstr((gp.quicksum((w[i] + org_coeff[i]) for i in coeff_indexs) == 3), name = 'c4')
     #이번 selected와 other에 대한 문제 풀이
-    m.addConstr(gp.quicksum((w[i] + org_coeff[i])*selected[i] for i in coeff_indexs) + y[dummy_index] >= 0)
+    m.addConstr((gp.quicksum((w[i] + org_coeff[i])*selected[i]*weight_direction[i] for i in coeff_indexs) + y[dummy_index,error_term_index] >= 0), name = 'c5')
+    error_term_index += 1
     for other_info in others:
-        m.addConstr(gp.quicksum((w[i] + org_coeff[i])*selected[i] for i in coeff_indexs) + y[dummy_index]>=
-                    gp.quicksum((w[j] + org_coeff[j])*other_info[j] for j in coeff_indexs))
+        m.addConstr(gp.quicksum((w[i] + org_coeff[i])*selected[i]*weight_direction[i] for i in coeff_indexs) + y[dummy_index,error_term_index]>=
+                    gp.quicksum((w[j] + org_coeff[j])*other_info[j]*weight_direction[j] for j in coeff_indexs))
+        error_term_index += 1
     dummy_index += 1
     #과거 정보를 적층하는 작업
     if len(past_data) > 0:
@@ -243,16 +253,25 @@ def ReviseCoeffAP2(selected, others, org_coeff, past_data = [], Big_M = 1000, we
             p_others = data[1]
             #print('p_selected',p_selected)
             #print('p_others',p_others)
-            m.addConstr(gp.quicksum((w[i] + org_coeff[i]) * p_selected[i] for i in coeff_indexs) + y[dummy_index] >= 0)
+            error_term_index = 0
+            m.addConstr(gp.quicksum((w[i] + org_coeff[i]) * p_selected[i] * weight_direction[i] for i in coeff_indexs) + y[dummy_index,error_term_index] >= 0)
+            error_term_index += 1
             for p_other_info in p_others:
                 #print('p_other_info',p_other_info)
-                m.addConstr(gp.quicksum((w[i] + org_coeff[i])*p_selected[i] for i in coeff_indexs) + y[dummy_index] >=
-                           gp.quicksum((w[j] + org_coeff[j])*p_other_info[j] for j in coeff_indexs))
+                m.addConstr(gp.quicksum((w[i] + org_coeff[i])*p_selected[i] * weight_direction[i] for i in coeff_indexs) + y[dummy_index,error_term_index] >=
+                           gp.quicksum((w[j] + org_coeff[j])*p_other_info[j] * weight_direction[j] for j in coeff_indexs))
+                error_term_index += 1
             dummy_index += 1
     #풀이
     m.optimize()
+    print(m.display())
+    print(m.getVars())
+    m.write("test_file.lp")
+    input('모형 확인')
     try:
         print('Obj val: %g' % m.objVal)
+        print(w)
+        print(z)
         res = []
         for val in m.getVars():
             if val.VarName[0] == 'w':

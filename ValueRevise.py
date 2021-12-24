@@ -51,6 +51,7 @@ def InputCalculate2(rider, customer_set, index = -1):
     other_coefficient = []
     """
     rev_infos = []
+    check = []
     #print('Index#',index,'/rider_choice: ',rider.choice_info[index])
     for info in rider.choice_info[index][3]:
         ct_name = info[0]
@@ -58,7 +59,16 @@ def InputCalculate2(rider, customer_set, index = -1):
         customer_type = customer_set[ct_name].type
         type_cost = rider.expect[customer_type]
         fee = customer_set[ct_name].fee[0]
-        rev_infos.append([-dist_cost, -type_cost, fee])
+        rev_infos.append([-dist_cost, -type_cost, fee,ct_name,info[1],info[-1],-type_cost*rider.p_coeff[1],-type_cost*rider.coeff[1]])
+        check.append([ct_name, info[1]])
+    check.sort(key = operator.itemgetter(1), reverse = True)
+    print('Rider',rider.coeff)
+    print('Rev',rev_infos)
+    if rev_infos[0][3] == check[0][0]:
+        print('기존 p로 만족하는 데이터')
+    else:
+        print('기존 p로 만족X하는 데이터')
+    input('확인')
     return rev_infos[0], rev_infos[1:]
 
 def ChoiceCheck(rider, customer_set):
@@ -188,7 +198,8 @@ def SystemRunner(env, rider_set, customer_set, cool_time, ox_table ,interval=10,
         expectation, actual = Comapre2List(platform_expected, actual_choice, ox_table)
         #ox_table_save
         print("차이발생/T now:",now,"/예상한 선택", expectation , "/실제 선택", actual, "/실제선택2:",actual_choice)
-        if len(expectation) > 0:
+        if False:
+        #if len(expectation) > 0:
             print("라이더가 예상과 다른 고객 선택")
             for info in expectation:
                 rider = rider_set[info[0]]
@@ -220,13 +231,35 @@ def SystemRunner(env, rider_set, customer_set, cool_time, ox_table ,interval=10,
                         rider.p_coeff[index] += res[index]
                         revise_value += abs(res[index])
                     if revise_value > 0:
-                        print('갱신됨::{}'.format(rider.p_coeff))
+                        input('갱신됨::{}'.format(rider.p_coeff))
                         rider.p_history.append(copy.deepcopy(rider.p_coeff))
-            pass
-        elif False:
-            pass
         else:
-            print('예상과 동일한 선택 수행/ T:{}'.format(int(env.now)))
+            for rider_name in rider_set:
+                rider = rider_set[rider_name]
+                if len(rider.choice_info) > 0 and env.now - interval <= rider.choice_info[-1][0]:
+                    print('R{} T:{}~{}에 고객 {} 선택'.format(rider_name, int(env.now - interval), int(env.now), rider.choice_info[-1]))
+                    selected, others = InputCalculate2(rider, customer_set)  # 실제 라이더가 선택한 고객의 [-dist_cost, -type_cost, fee]
+                    past_choices = []
+                    indexs = list(range(len(rider.choice_info) - 1))
+                    indexs.reverse()
+                    for index1 in indexs:
+                        past_select, past_others = InputCalculate2(rider, customer_set, index=index1) #실제 라이더가 선택할 시점의 [-dist_cost, -type_cost, fee]
+                        if len(past_others) > 0:
+                            past_choices.append([past_select, past_others])
+                    feasibility, res = lpg.ReviseCoeffAP2(selected, others, rider.p_coeff, past_data=past_choices,
+                                                          weight_sum=weight_sum)
+                    if feasibility == True:
+                        print("목표::", rider.coeff)
+                        print("갱신전::", rider.p_coeff)
+                        print("res::", res)
+                        revise_value = 0
+                        for index in range(len(res)):
+                            rider.p_coeff[index] += res[index]
+                            revise_value += abs(res[index])
+                        if revise_value > 0:
+                            input('갱신됨2::{}'.format(rider.p_coeff))
+                            rider.p_history.append(copy.deepcopy(rider.p_coeff))
+            #print('예상과 동일한 선택 수행/ T:{}'.format(int(env.now)))
         # 보조금 초기화
         Basic.InitializeSubsidy(customer_set)  # 보조금 초기화
         Basic.DefreezeAgent(rider_set, type='rider')  # 라이더 반영
