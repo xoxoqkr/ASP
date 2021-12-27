@@ -47,9 +47,14 @@ f.write('저장 {} \n'.format('test'))
 
 for rider_name in RIDER_DICT:
     rider = RIDER_DICT[rider_name]
+    f.write('w0;w1;w2;선택한 고객 수; 쌓인 데이터수;\n')
     f.write('라이더#{};org;{};{};{}; \n'.format(rider_name, rider.coeff[0],rider.coeff[1] ,rider.coeff[2]))
     for info in rider.p_history:
-        f.write(';{};{};{}; \n '.format(info[0], info[1],info[2]))
+        print(info)
+        try:
+            f.write(';{};{};{};{};{}; \n '.format(info[0], info[1],info[2],info[3],info[4]))
+        except:
+            f.write(';{};{};{};{};{}; \n '.format(info[0], info[1], info[2], 0, 0))
     f.write('전체예측수;정답수;전체발생수;정답수; \n ')
     f.write('{};{};{};{}; \n '.format(ox_table[0], ox_table[1], ox_table[2],ox_table[3]))
 f.close()

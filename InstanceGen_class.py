@@ -49,7 +49,8 @@ def CustomerGeneratorForIP(env, customer_dict, dir=None, end_time=1000,  custome
             #input('{} : {} : {}'.format(FeeCalculator(distance, steps), steps, distance))
             #fee = FeeCalculator(distance, steps) + basic_fee #기본 수수료(basic_fee)에 거리마다 계단 형으로 추가 요금이 발생하는 요금제
             #print('거리 {}'.format(Basic.distance(store_loc, customer_loc)))
-            fee = int(Basic.distance(store_loc, customer_loc)/10)*100 + 2500 #2500
+            #fee = int(Basic.distance(store_loc, customer_loc)/10)*100 + 2500 #2500
+            fee = round((Basic.distance(store_loc, customer_loc) / 10) * 100,2) + 2500  # 2500
         else:
             fee = fee
         #fee = add_fee

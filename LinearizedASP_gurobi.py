@@ -222,14 +222,19 @@ def ReviseCoeffAP2(selected, others, org_coeff, past_data = [], Big_M = 1000, we
     error_term_indexs = list(range(max_data_size))
     # D.V. and model set.
     m = gp.Model("mip1")
-    w = m.addVars(len(org_coeff), vtype=GRB.CONTINUOUS, name="w")
+    w = m.addVars(len(org_coeff), lb = -2, vtype=GRB.CONTINUOUS, name="w")
     y = m.addVars(1 + len(past_data), max_data_size, vtype = GRB.CONTINUOUS, name= "y")
     z = m.addVars(len(org_coeff), vtype=GRB.CONTINUOUS, name="z")
     #print(y)
     #input('확인')
+    #m.setObjective(gp.quicksum(abs_(z[i]) for i in coeff_indexs) + Big_M * gp.quicksum(
+    #    y[i, j] for i in dummy_indexs for j in error_term_indexs), GRB.MINIMIZE)
     m.setObjective(gp.quicksum(z[i] for i in coeff_indexs) + Big_M*gp.quicksum(y[i,j] for i in dummy_indexs for j in error_term_indexs), GRB.MINIMIZE)
-    m.addConstrs((w[i] <= z[i] for i in coeff_indexs), name= 'c1') #linearization part
-    m.addConstrs((w[i]  >= -z[i] for i in coeff_indexs), name = 'c2')
+    #m.addConstrs((y[i,j] == 0 for i in dummy_indexs for j in error_term_indexs), name='c0-dummy')
+    m.addConstrs(( z[i]  - w[i]>= 0 for i in coeff_indexs), name= 'c1') #linearization part
+    m.addConstrs(( z[i] +w[i] >= 0 for i in coeff_indexs), name = 'c2')
+    #m.addConstrs(( z[i]  >= w[i] for i in coeff_indexs), name= 'c1') #linearization part
+    #m.addConstrs(( z[i] >= -w[i] for i in coeff_indexs), name = 'c2')
     #m.addConstrs(org_coeff[i] - w[i] <= z[i] for i in coeff_indexs) #linearization part
     #m.addConstrs(org_coeff[i] - w[i]  >= -z[i] for i in coeff_indexs)
     dummy_index = 0
@@ -241,33 +246,39 @@ def ReviseCoeffAP2(selected, others, org_coeff, past_data = [], Big_M = 1000, we
     #이번 selected와 other에 대한 문제 풀이
     m.addConstr((gp.quicksum((w[i] + org_coeff[i])*selected[i]*weight_direction[i] for i in coeff_indexs) + y[dummy_index,error_term_index] >= 0), name = 'c5')
     error_term_index += 1
+    Constr_count = 0
     for other_info in others:
+        print('compare',selected,other_info)
         m.addConstr(gp.quicksum((w[i] + org_coeff[i])*selected[i]*weight_direction[i] for i in coeff_indexs) + y[dummy_index,error_term_index]>=
-                    gp.quicksum((w[j] + org_coeff[j])*other_info[j]*weight_direction[j] for j in coeff_indexs))
+                    gp.quicksum((w[j] + org_coeff[j])*other_info[j]*weight_direction[j] for j in coeff_indexs), name = 'c6-'+str(Constr_count))
         error_term_index += 1
+        Constr_count += 1
     dummy_index += 1
     #과거 정보를 적층하는 작업
     if len(past_data) > 0:
+        data_index = 0
         for data in past_data:
             p_selected = data[0]
             p_others = data[1]
             #print('p_selected',p_selected)
             #print('p_others',p_others)
             error_term_index = 0
-            m.addConstr(gp.quicksum((w[i] + org_coeff[i]) * p_selected[i] * weight_direction[i] for i in coeff_indexs) + y[dummy_index,error_term_index] >= 0)
+            m.addConstr(gp.quicksum((w[i] + org_coeff[i]) * p_selected[i] * weight_direction[i] for i in coeff_indexs) + y[dummy_index,error_term_index] >= 0, name = 'c7-'+ str(data_index) )
             error_term_index += 1
             for p_other_info in p_others:
                 #print('p_other_info',p_other_info)
                 m.addConstr(gp.quicksum((w[i] + org_coeff[i])*p_selected[i] * weight_direction[i] for i in coeff_indexs) + y[dummy_index,error_term_index] >=
-                           gp.quicksum((w[j] + org_coeff[j])*p_other_info[j] * weight_direction[j] for j in coeff_indexs))
+                           gp.quicksum((w[j] + org_coeff[j])*p_other_info[j] * weight_direction[j] for j in coeff_indexs), name = 'c8-'+str(data_index) + '-'+str(error_term_index-1))
                 error_term_index += 1
             dummy_index += 1
+            data_index += 1
     #풀이
+    m.Params.method = 2
     m.optimize()
     print(m.display())
     print(m.getVars())
     m.write("test_file.lp")
-    input('모형 확인')
+    #input('모형 확인')
     try:
         print('Obj val: %g' % m.objVal)
         print(w)

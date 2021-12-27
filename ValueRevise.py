@@ -63,12 +63,13 @@ def InputCalculate2(rider, customer_set, index = -1):
         check.append([ct_name, info[1]])
     check.sort(key = operator.itemgetter(1), reverse = True)
     print('Rider',rider.coeff)
+    print('E_Rider', rider.p_coeff)
     print('Rev',rev_infos)
     if rev_infos[0][3] == check[0][0]:
         print('기존 p로 만족하는 데이터')
     else:
         print('기존 p로 만족X하는 데이터')
-    input('확인')
+    #input('확인')
     return rev_infos[0], rev_infos[1:]
 
 def ChoiceCheck(rider, customer_set):
@@ -232,7 +233,7 @@ def SystemRunner(env, rider_set, customer_set, cool_time, ox_table ,interval=10,
                         revise_value += abs(res[index])
                     if revise_value > 0:
                         input('갱신됨::{}'.format(rider.p_coeff))
-                        rider.p_history.append(copy.deepcopy(rider.p_coeff))
+                        rider.p_history.append(copy.deepcopy(rider.p_coeff)+[copy.deepcopy(len(rider.choice)),len(past_choices)])
         else:
             for rider_name in rider_set:
                 rider = rider_set[rider_name]
@@ -257,8 +258,8 @@ def SystemRunner(env, rider_set, customer_set, cool_time, ox_table ,interval=10,
                             rider.p_coeff[index] += res[index]
                             revise_value += abs(res[index])
                         if revise_value > 0:
-                            input('갱신됨2::{}'.format(rider.p_coeff))
-                            rider.p_history.append(copy.deepcopy(rider.p_coeff))
+                            print('갱신됨2::{}'.format(rider.p_coeff))
+                            rider.p_history.append(copy.deepcopy(rider.p_coeff)+[copy.deepcopy(len(rider.choice)),len(past_choices)])
             #print('예상과 동일한 선택 수행/ T:{}'.format(int(env.now)))
         # 보조금 초기화
         Basic.InitializeSubsidy(customer_set)  # 보조금 초기화

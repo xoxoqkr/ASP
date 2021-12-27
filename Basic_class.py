@@ -109,7 +109,7 @@ class Rider(object):
         cost_coeff = round(random.uniform(0.3,1.0),1)
         type_coeff = 3 - (1.5 + cost_coeff) #round(random.uniform(0.8,1.2),1)
         self.coeff = [cost_coeff,type_coeff,1.5] #[cost_coeff,type_coeff,1] #[1,1,1]
-        self.p_coeff = [0,0,3] #[0.9,0.4,0.8] #[1,1,1]#[거리, 타입, 수수료]
+        self.p_coeff = [1,1,1] #[0.9,0.4,0.8] #[1,1,1]#[거리, 타입, 수수료]
         self.past_route = []
         self.past_route_info = []
         self.P_choice_info = []
