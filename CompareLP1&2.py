@@ -16,5 +16,6 @@ def InstanceGen(unit_dist= 8, std = 1, max_x = 50, max_y = 50, gen_n = 100):
         coordinates.append([store_loc, customer_loc])
     return coordinates
 
+
 runtime = m.Runtime
 print("The run time is %f" % runtime)

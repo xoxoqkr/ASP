@@ -202,10 +202,87 @@ def ReviseCoeffAP(selected, others, org_coeff, past_data = [], error = 10):
         return False, None
 
 
+def ReviseCoeffAP1(selected, others, org_coeff, past_data = [], Big_M = 1000, weight_sum = False):
+    """
+    라이더의 가치함수 갱신 문제 => LP1
+    -> 수정 중
+    :param selected: #선택된 주문 1개의 요소들 [x11,x12,x13]
+    :param others: #선택되지 않은 주문들의 요소들 [[x11,x12,x13],[x21,x22,x23],...,[]]
+    :param org_coeff:현재 coeff
+    :param past_data: 과거 선택들
+    :return:
+    """
+    weight_direction = [1,1,1]
+    coeff_indexs = list(range(len(org_coeff)))
+    dummy_indexs = list(range(1 + len(past_data)))
+    max_data_size = [1 + len(others)]
+    for info in past_data:
+        max_data_size.append(1 + len(info[1]))
+    max_data_size = max(max_data_size)
+    error_term_indexs = list(range(max_data_size))
+    # D.V. and model set.
+    m = gp.Model("mip1")
+    w = m.addVars(len(org_coeff), lb = 0, vtype=GRB.CONTINUOUS, name="w")
+    y = m.addVars(1 + len(past_data), max_data_size, vtype = GRB.CONTINUOUS, name= "y") #error
+    m.setObjective(gp.quicksum(y[i,j] for i in dummy_indexs for j in error_term_indexs), GRB.MINIMIZE)
+    dummy_index = 0
+    error_term_index = 0
+    #계수 합 관련
+    if weight_sum == True:
+        m.addConstrs((w[i] + org_coeff[i] >= 0 for i in coeff_indexs), name = 'c3')
+        m.addConstr((gp.quicksum((w[i] + org_coeff[i]) for i in coeff_indexs) == 3), name = 'c4')
+    #이번 selected와 other에 대한 문제 풀이
+    m.addConstr((gp.quicksum((w[i] + org_coeff[i])*selected[i]*weight_direction[i] for i in coeff_indexs) + y[dummy_index,error_term_index] >= 0), name = 'c5')
+    error_term_index += 1
+    Constr_count = 0
+    for other_info in others:
+        #print('compare',selected,other_info)
+        m.addConstr(gp.quicksum((w[i] + org_coeff[i])*selected[i]*weight_direction[i] for i in coeff_indexs) + y[dummy_index,error_term_index]>=
+                    gp.quicksum((w[j] + org_coeff[j])*other_info[j]*weight_direction[j] for j in coeff_indexs), name = 'c6-'+str(Constr_count))
+        error_term_index += 1
+        Constr_count += 1
+    dummy_index += 1
+    #과거 정보를 적층하는 작업
+    if len(past_data) > 0:
+        data_index = 0
+        for data in past_data:
+            p_selected = data[0]
+            p_others = data[1]
+            #print('p_selected',p_selected)
+            #print('p_others',p_others)
+            error_term_index = 0
+            m.addConstr(gp.quicksum((w[i] + org_coeff[i]) * p_selected[i] * weight_direction[i] for i in coeff_indexs) + y[dummy_index,error_term_index] >= 0, name = 'c7-'+ str(data_index) )
+            error_term_index += 1
+            for p_other_info in p_others:
+                m.addConstr(gp.quicksum((w[i] + org_coeff[i])*p_selected[i] * weight_direction[i] for i in coeff_indexs) + y[dummy_index,error_term_index] >=
+                           gp.quicksum((w[j] + org_coeff[j])*p_other_info[j] * weight_direction[j] for j in coeff_indexs), name = 'c8-'+str(data_index) + '-'+str(error_term_index-1))
+                error_term_index += 1
+            dummy_index += 1
+            data_index += 1
+    #풀이
+    m.Params.method = 2
+    m.optimize()
+    exe_t = m.Runtime
+    #print(m.display())
+    #print(m.getVars())
+    m.write("test_file.lp")
+    #input('모형 확인')
+    try:
+        print('Obj val: %g' % m.objVal)
+        res = []
+        for val in m.getVars():
+            if val.VarName[0] == 'w':
+                res.append(float(val.x))
+        return True, res, exe_t
+    except:
+        print('Infeasible')
+        return False, None, exe_t
+
+
+
 def ReviseCoeffAP2(selected, others, org_coeff, past_data = [], Big_M = 1000, weight_sum = False):
     """
-    라이더의 가치함수 갱신 문제
-    -> 수정 중
+    라이더의 가치함수 갱신 문제=> LP2
     :param selected: #선택된 주문 1개의 요소들 [x11,x12,x13]
     :param others: #선택되지 않은 주문들의 요소들 [[x11,x12,x13],[x21,x22,x23],...,[]]
     :param org_coeff:현재 coeff
@@ -248,7 +325,7 @@ def ReviseCoeffAP2(selected, others, org_coeff, past_data = [], Big_M = 1000, we
     error_term_index += 1
     Constr_count = 0
     for other_info in others:
-        print('compare',selected,other_info)
+        #print('compare',selected,other_info)
         m.addConstr(gp.quicksum((w[i] + org_coeff[i])*selected[i]*weight_direction[i] for i in coeff_indexs) + y[dummy_index,error_term_index]>=
                     gp.quicksum((w[j] + org_coeff[j])*other_info[j]*weight_direction[j] for j in coeff_indexs), name = 'c6-'+str(Constr_count))
         error_term_index += 1
@@ -275,22 +352,23 @@ def ReviseCoeffAP2(selected, others, org_coeff, past_data = [], Big_M = 1000, we
     #풀이
     m.Params.method = 2
     m.optimize()
-    print(m.display())
-    print(m.getVars())
+    exe_t = m.Runtime
+    #print(m.display())
+    #print(m.getVars())
     m.write("test_file.lp")
     #input('모형 확인')
     try:
         print('Obj val: %g' % m.objVal)
-        print(w)
-        print(z)
+        #print(w)
+        #print(z)
         res = []
         for val in m.getVars():
             if val.VarName[0] == 'w':
                 res.append(float(val.x))
-        return True, res
+        return True, res, exe_t
     except:
         print('Infeasible')
-        return False, None
+        return False, None, exe_t
 
 
 def LogScore(coeff, vector):

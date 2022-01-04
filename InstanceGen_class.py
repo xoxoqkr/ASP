@@ -2,6 +2,32 @@
 #.py 설명 :
 # ->InstanceGen_class.py : 고객, 라이더 생성 관련 함수
 import Basic_class as Basic
+import random
+import math
+import numpy as np
+import matplotlib.pyplot as plt
+
+
+def InstanceGen(unit_dist= 8, std = 1, max_x = 50, max_y = 50, gen_n = 100):
+    coordinates = []
+    pool = np.random.normal(unit_dist, std, size= 10000)
+    """
+    plt.hist(pool, bins=20)
+    plt.show()
+    plt.close()
+    input('pool 확인')    
+    """
+    for counnt in range(gen_n):
+        for try_num in range(1000):
+            store_loc = [random.randrange(0, int(max_x / 2)), random.randrange(0, int(max_y / 2))]
+            req_dist = random.choice(pool)
+            angle = math.radians(random.randrange(0,360))
+            customer_loc = [store_loc[0] + round(req_dist*math.cos(angle),4),store_loc[1] + round(req_dist*math.sin(angle),4) ]
+            #customer_loc = [store_loc[0] + round(req_dist*math.sin(angle),4),store_loc[0] + round(req_dist*math.cos(angle),4) ]
+            if 0 <= customer_loc[0] <= max_x and 0 <= customer_loc[1] <= max_y:
+                coordinates.append([store_loc, customer_loc])
+                break
+    return coordinates
 
 
 def FeeCalculator(distance, steps):
@@ -17,7 +43,8 @@ def FeeCalculator(distance, steps):
 
 
 
-def CustomerGeneratorForIP(env, customer_dict, dir=None, end_time=1000,  customer_wait_time = 40, input_fee = None, lamda = None, add_fee = 0, basic_fee = 3500, steps = []):
+def CustomerGeneratorForIP(env, customer_dict, dir=None, end_time=1000,  customer_wait_time = 40, input_fee = None, lamda = None, input_loc = False, add_fee = 0, basic_fee = 3500, steps = [],
+                           unit_dist = 8, std = 1, max_x = 50, max_y = 50, type_num = 4, input_instances = None):
     """
     주어진 입력 값에 대한 고객을 생성. 아래 요인들이 중요
     -배송비 책정
@@ -37,25 +64,24 @@ def CustomerGeneratorForIP(env, customer_dict, dir=None, end_time=1000,  custome
     """
     datas = open(dir, 'r')
     lines = datas.readlines()
+    if input_instances == None:
+        coordinates = InstanceGen(unit_dist=unit_dist, std=std, max_x=max_x, max_y=max_y, gen_n=10000)
+    else:
+        coordinates = input_instances
     for line in lines[3:]:
         data = line.split(',')
-        #print(data)
-        #print(float(data[1]),float(data[2]),float(data[3]),float(data[4]),float(data[7]))
-        #input('Stop')
         store_loc = [float(data[1]), float(data[2])]
         customer_loc = [float(data[3]), float(data[4])]
         if input_fee == None:
             #distance = int(Basic.distance(store_loc, customer_loc))
-            #input('{} : {} : {}'.format(FeeCalculator(distance, steps), steps, distance))
             #fee = FeeCalculator(distance, steps) + basic_fee #기본 수수료(basic_fee)에 거리마다 계단 형으로 추가 요금이 발생하는 요금제
-            #print('거리 {}'.format(Basic.distance(store_loc, customer_loc)))
-            #fee = int(Basic.distance(store_loc, customer_loc)/10)*100 + 2500 #2500
             fee = round((Basic.distance(store_loc, customer_loc) / 10) * 100,2) + 2500  # 2500
         else:
             fee = fee
-        #fee = add_fee
-        #input('고객 {} 수수료 {}'.format(int(data[0]), fee))
-        c = Basic.Customer(env, int(data[0]), input_location = [store_loc, customer_loc], fee= fee, end_time= customer_wait_time, far = int(data[6]))
+        if input_loc != False:
+            store_loc = coordinates[int(data[0])][0]
+            customer_loc = coordinates[int(data[0])][1]
+        c = Basic.Customer(env, int(data[0]), input_location = [store_loc, customer_loc], fee= fee, end_time= customer_wait_time, far = int(data[6]),type_num = type_num)
         customer_dict[int(data[0])] = c
         #print('Time',round(env.now,2) ,'CT#', c.name, 'gen')
         if lamda == None:
@@ -66,7 +92,6 @@ def CustomerGeneratorForIP(env, customer_dict, dir=None, end_time=1000,  custome
             except:
                 print("lamda require type int+ or float+")
                 yield env.timeout(4)
-                input("check")
         if env.now > end_time:
             break
 
@@ -74,7 +99,8 @@ def CustomerGeneratorForIP(env, customer_dict, dir=None, end_time=1000,  custome
 
 def DriverMaker(env, driver_dict, customer_set ,speed = 2, end_time = 800, intervals = [], interval_para = False, interval_res = [],
                 toCenter = True, error = 0, run_time = 900, pref_info = None, driver_left_time = 120, print_para = False,
-                start_pos = [26,26], value_cal_type = 'return', num_gen = 10, coeff_revise_option = False, weight_sum = False):
+                start_pos = [26,26], value_cal_type = 'return', num_gen = 10, coeff_revise_option = False, weight_sum = False,
+                ExpectedCustomerPreference = [0,250,500,750], rider_coeff = None):
     """
     주어진 입력값으로 행동하는 라이더를 생성
     :param env: simpy Environment
@@ -98,7 +124,10 @@ def DriverMaker(env, driver_dict, customer_set ,speed = 2, end_time = 800, inter
     while env.now < end_time and name < num_gen:
         rider = Basic.Rider(env, name, speed, customer_set, toCenter = toCenter, error = error, run_time = run_time,
                             pref_info= pref_info, left_time=driver_left_time, print_para = print_para, start_pos= start_pos,
-                            value_cal_type = value_cal_type, coeff_revise_option = coeff_revise_option, weight_sum = weight_sum)
+                            value_cal_type = value_cal_type, coeff_revise_option = coeff_revise_option, weight_sum = weight_sum,
+                            ExpectedCustomerPreference = ExpectedCustomerPreference)
+        if rider_coeff != None:
+            rider.coeff = rider_coeff
         driver_dict[name] = rider
         if interval_para == False:
             #print('Hr',intervals[int(env.now//60)])

@@ -11,7 +11,7 @@ import copy
 
 
 class Customer(object):
-    def __init__(self, env, name, input_location, end_time = 800, ready_time=2, service_time=1, fee = 1000,wait = True, far = 0, end_type = 4):
+    def __init__(self, env, name, input_location, end_time = 800, ready_time=2, service_time=1, fee = 1000,wait = True, far = 0, type_num = 4):
         """
         고객 class
         :param env: simpy Environment
@@ -39,7 +39,7 @@ class Customer(object):
         self.wait = wait
         self.far = far
         self.error = 0
-        self.type = random.choice([0,1,2,3]) #[0,1,2,3]#random.randrange(1,end_type) #random.randrange(1,end_type)
+        self.type = random.choice(list(range(type_num))) #[0,1,2,3]#random.randrange(1,end_type) #random.randrange(1,end_type)
         env.process(self.Decline(env))
 
     def Decline(self, env, slack = 10):
@@ -114,6 +114,7 @@ class Rider(object):
         self.past_route_info = []
         self.P_choice_info = []
         self.p_history = [copy.deepcopy(self.p_coeff)]
+        self.violated_choice_info = []
         env.process(self.Runner(env, customer_set, toCenter = toCenter, pref = pref_info, save_info = save_info, print_para = print_para,coeff_revise_option = coeff_revise_option, weight_sum= weight_sum))
         env.process(self.RiderLeft(left_time))
 
