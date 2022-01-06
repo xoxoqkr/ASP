@@ -27,7 +27,7 @@ def InputCalculate(expectation, actual_result):
 #[int(env.now), ct_name, self.last_location , rev_infos]
 # rev_infos = [고객 이름, fee-cost - cost2, cost, fee]
 
-def InputCalculate2(rider, customer_set, index = -1):
+def InputCalculate2(rider, customer_set, index = -1, LP_type = 'LP1'):
     """
     select_coefficient = []
     select_info = rider.choice_info[3][0]
@@ -48,7 +48,10 @@ def InputCalculate2(rider, customer_set, index = -1):
         customer_type = customer_set[ct_name].type
         type_cost = rider.expect[customer_type]
         fee = customer_set[ct_name].fee[0]
-        rev_infos.append([-dist_cost, -type_cost, fee,ct_name,info[1],info[-1],-type_cost*rider.p_coeff[1],-type_cost*rider.coeff[1]])
+        if LP_type == 'LP1':
+            rev_infos.append([-dist_cost, -type_cost, fee,ct_name,info[1],info[-1],-type_cost*rider.LP1p_coeff[1],-type_cost*rider.LP1p_coeff[1]])
+        else:
+            rev_infos.append([-dist_cost, -type_cost, fee,ct_name,info[1],info[-1],-type_cost*rider.LP2p_coeff[1],-type_cost*rider.LP2p_coeff[1]])
         check.append([ct_name, info[1]])
     check.sort(key = operator.itemgetter(1), reverse = True)
     print('Rider',rider.coeff)
@@ -230,54 +233,55 @@ def SystemRunner(env, rider_set, customer_set, cool_time, ox_table ,interval=10,
                 if len(rider.choice_info) > 0 and env.now - interval <= rider.choice_info[-1][0]:
                     print('R{} T:{}~{}에 고객 {} 선택'.format(rider_name, int(env.now - interval), int(env.now), rider.choice_info[-1]))
                     selected, others = InputCalculate2(rider, customer_set)  # 실제 라이더가 선택한 고객의 [-dist_cost, -type_cost, fee]
-                    past_choices = []
                     indexs = list(range(len(rider.choice_info) - 1))
                     indexs.reverse()
-                    if LP_type == 'LP1':
-                        for index1 in indexs:
-                            past_select, past_others = InputCalculate2(rider, customer_set, index=index1) #실제 라이더가 선택할 시점의 [-dist_cost, -type_cost, fee]
-                            if len(past_others) > 0:
-                                past_choices.append([past_select, past_others])
-                        feasibility, res, exe_t = lpg.ReviseCoeffAP1(selected, others, [0,0,0], past_data=past_choices,
-                                                              weight_sum=weight_sum)
+                    #if #LP_type == 'LP1':
+                    #LP1블럭
+                    LP1past_choices = []
+                    for index1 in indexs:
+                        past_select, past_others = InputCalculate2(rider, customer_set, index=index1, LP_type = 'LP1') #실제 라이더가 선택할 시점의 [-dist_cost, -type_cost, fee]
+                        if len(past_others) > 0:
+                            LP1past_choices.append([past_select, past_others])
+                    LP1feasibility, LP1res, LP1exe_t = lpg.ReviseCoeffAP1(selected, others, [0,0,0], past_data=LP1past_choices,
+                                                          weight_sum=weight_sum)
+                    #elif True:
+                    #LP2블럭
+                    LP2past_choices = []
+                    satisfy = True
+                    selected_value = np.dot(rider.LP2p_coeff,selected[:len(rider.LP2p_coeff)])
+                    for other_info in others:
+                        if selected_value < np.dot(rider.LP2p_coeff,other_info[:len(rider.LP2p_coeff)]):
+                            rider.violated_choice_info.append(copy.deepcopy(len(rider.choice_info)))
+                            satisfy = False
+                            break
+                    if satisfy == True:
+                        LP2feasibility = False
                     else:
-                        satisfy = True
-                        selected_value = np.dot(rider.p_coeff,selected[:len(rider.p_coeff)])
-                        for other_info in others:
-                            if selected_value < np.dot(rider.p_coeff,other_info[:len(rider.p_coeff)]):
-                                satisfy = False
-                                rider.violated_choice_info.append(copy.deepcopy(len(rider.choice_info)))
-                                break
-                        if satisfy == True:
-                            feasibility = False
-                        else:
-                            #현재는 무조건 과거 beta%만큼으로 수행
-                            #print('위반',rider.violated_choice_info)
-                            #print('위반2', rider.violated_choice_info[:len(rider.violated_choice_info)-1])
-                            #print('일반',indexs[:max(1, int(len(indexs) * beta - len(rider.violated_choice_info)))])
-                            #input('확인2')
-                            for index1 in rider.violated_choice_info[:len(rider.violated_choice_info)-1] + indexs[:max(1, int(len(indexs) * beta - len(rider.violated_choice_info)))]:
-                                past_select, past_others = InputCalculate2(rider, customer_set,
-                                                                           index=index1)  # 실제 라이더가 선택할 시점의 [-dist_cost, -type_cost, fee]
-                                if len(past_others) > 0:
-                                    past_choices.append([past_select, past_others])
-                            feasibility, res, exe_t = lpg.ReviseCoeffAP2(selected, others, rider.p_coeff, past_data=past_choices,
-                                                                  weight_sum=weight_sum)
-                    if feasibility == True:
-                        print("목표::", rider.coeff)
-                        print("갱신전::", rider.p_coeff)
-                        print("res::", res)
-                        revise_value = 0
-                        for index in range(len(res)):
-                            if LP_type == 'LP1':
-                                rider.p_coeff[index] = res[index]
-                                revise_value = 1
-                            else:
-                                rider.p_coeff[index] += res[index]
-                                revise_value += abs(res[index])
-                        if revise_value > 0:
-                            print('갱신됨2::{}'.format(rider.p_coeff))
-                            rider.p_history.append(copy.deepcopy(rider.p_coeff)+[copy.deepcopy(len(rider.choice)),len(past_choices)] +[exe_t])
+                        for index1 in rider.violated_choice_info[:len(rider.violated_choice_info)-1] + indexs[:max(1, int(len(indexs) * beta - len(rider.violated_choice_info)))]:
+                            past_select, past_others = InputCalculate2(rider, customer_set,
+                                                                       index=index1, LP_type= 'LP2')  # 실제 라이더가 선택할 시점의 [-dist_cost, -type_cost, fee]
+                            if len(past_others) > 0:
+                                LP2past_choices.append([past_select, past_others])
+                        LP2feasibility, LP2res, LP2exe_t = lpg.ReviseCoeffAP2(selected, others, rider.LP2p_coeff, past_data=LP2past_choices,
+                                                              weight_sum=weight_sum)
+
+                    if LP1feasibility == True:
+                        LP1revise_value = 0
+                        for index in range(len(LP1res)):
+                            #rider.p_coeff[index] = res[index]
+                            rider.LP1p_coeff[index] = LP1res[index]
+                            LP1revise_value = 1
+                        if LP1revise_value > 0:
+                            rider.LP1History.append(
+                                copy.deepcopy(rider.LP1p_coeff) + [copy.deepcopy(len(rider.choice)), len(LP1past_choices)] + [
+                                    LP1exe_t])
+                    if LP2feasibility == True:
+                        LP2revise_value = 0
+                        for index in range(len(LP2res)):
+                            rider.LP2p_coeff[index] += LP2res[index]
+                            LP2revise_value += abs(LP2res[index])
+                        if LP2revise_value > 0:
+                            rider.LP2History.append(copy.deepcopy(rider.LP2p_coeff)+[copy.deepcopy(len(rider.choice)),len(LP2past_choices)] +[LP2exe_t])
             #print('예상과 동일한 선택 수행/ T:{}'.format(int(env.now)))
         # 보조금 초기화
         Basic.InitializeSubsidy(customer_set)  # 보조금 초기화

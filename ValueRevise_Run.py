@@ -69,15 +69,26 @@ for rider_name in RIDER_DICT:
     f.write('w0;w1;w2;선택한 고객 수; 쌓인 데이터수;사용 데이터 수 ;실행시간;euc거리;\n')
     f.write('라이더#{};org;{};{};{}; \n'.format(rider_name, rider.coeff[0],rider.coeff[1] ,rider.coeff[2]))
     print('라이더 선호',rider.coeff)
-    for info in rider.p_history:
-        print(info)
-        try:
-            euc_dist = round(math.sqrt((info[0] - rider.coeff[0]) ** 2 + (info[1] - rider.coeff[1]) ** 2 + (info[2] - rider.coeff[2]) ** 2), 4)
-            f.write(';{};{};{};{};{};{};{}; \n '.format(info[0], info[1],info[2],info[3],info[4],info[5],euc_dist))
-        except:
-            f.write(';{};{};{};{};{};{}; \n '.format(info[0], info[1], info[2], 0, 0,0,0))
-    f.write('전체예측수;정답수;전체발생수;정답수; \n ')
-    f.write('{};{};{};{}; \n '.format(ox_table[0], ox_table[1], ox_table[2],ox_table[3]))
+    info_name = ['LP1', 'LP2']
+    count = 0
+    for infos in [rider.LP1History, rider.LP2History]:
+        print(info_name[count])
+        f.write(';{};\n'.format(info_name[count]))
+        for info in infos:
+            #print(info)
+            try:
+                euc_dist = round(math.sqrt((info[0] - rider.coeff[0]) ** 2 + (info[1] - rider.coeff[1]) ** 2 + (info[2] - rider.coeff[2]) ** 2), 4)
+                content = ';{};{};{};{};{};{};{};'.format(info[0], info[1],info[2],info[3],info[4],info[5],euc_dist)
+                f.write(content + '\n')
+            except:
+                content = ';{};{};{};{};{};{};'.format(info[0], info[1], info[2], 0, 0,0,0)
+                f.write(content+ '\n')
+            print(content)
+        f.write('전체예측수;정답수;전체발생수;정답수; \n ')
+        f.write('{};{};{};{}; \n '.format(ox_table[0], ox_table[1], ox_table[2],ox_table[3]))
+        count += 1
+
+
 f.close()
 
 #데이터 확인
