@@ -81,7 +81,7 @@ for rider_name in RIDER_DICT:
                 content = ';{};{};{};{};{};{};{};{};'.format(info[0], info[1],info[2],info[3],info[4],info[5],info[6],euc_dist)
                 f.write(content + '\n')
             except:
-                content = ';{};{};{};{};{};{};{};'.format(info[0], info[1], info[2], 0, 0,0,0,0)
+                content = ';{};{};{};{};{};{};{};{};'.format(info[0], info[1], info[2], info[3],info[4],info[5],info[6],None)
                 f.write(content+ '\n')
             print(content)
         f.write('전체예측수;정답수;전체발생수;정답수; \n ')

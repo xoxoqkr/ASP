@@ -264,7 +264,7 @@ def SystemRunner(env, rider_set, customer_set, cool_time, ox_table ,interval=10,
                                                                        LP_type='LP1')  # 실제 라이더가 선택할 시점의 [-dist_cost, -type_cost, fee]
                             if len(past_others) > 0:
                                 LP1past_choices.append([past_select, past_others])
-                        LP1feasibility, LP1res, LP1exe_t, LP1_obj = lpg.ReviseCoeffAP1(selected, others, [0, 0, 0],
+                        LP1feasibility, LP1res, LP1exe_t, LP1_obj = lpg.ReviseCoeffAP1(selected, others, rider.LP1p_coeff,
                                                                               past_data=LP1past_choices,
                                                                               weight_sum=weight_sum)
                     #LP2블럭

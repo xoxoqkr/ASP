@@ -3,10 +3,10 @@ from InstanceGen_class import InstanceGen
 import random
 
 input_para = True
-type_nums = [8,11]
-stds = [0.1,0.2,0.3]
+type_nums = [8]
+stds = [0.3]
 LP_types = ['LP1']
-betas = [1,0.5,0.2]
+betas = [1,0.9]
 unit_dist = 8
 max_x = 50
 max_y = 50
