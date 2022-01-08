@@ -16,6 +16,7 @@ global input_para
 global input_instances
 global rider_coeff
 
+
 ExpectedCustomerPreference = []
 inc = int(1000/type_num)
 type_fee = 0
@@ -63,6 +64,11 @@ env.run(until=run_time)
 f = open("결과저장1209_보조금.txt", 'a')
 f.write('저장 {} \n'.format('test'))
 
+f2 = open("결과저장1209_보조금_정리.txt", 'a')
+f2.write('저장 {} \n'.format('test1'))
+f2.write('고객종류;{};거리 std;{};LP종류;{};beta;{};\n'.format(type_num,std, LP_type,beta))
+f2.write(';LP1;연산시간;연산횟수;obj합;LP2;연산시간;연산횟수;obj합;LP1과의 차;\n')
+
 for rider_name in RIDER_DICT:
     rider = RIDER_DICT[rider_name]
     f.write('고객종류;{};거리 std;{};LP종류;{};beta;{};\n'.format(type_num,std, LP_type,beta))
@@ -71,6 +77,8 @@ for rider_name in RIDER_DICT:
     print('라이더 선호',rider.coeff)
     info_name = ['LP1', 'LP2']
     count = 0
+    com_t = [0, 0]
+    obj = [0,0]
     for infos in [rider.LP1History, rider.LP2History]:
         print(info_name[count])
         f.write(';{};\n'.format(info_name[count]))
@@ -83,14 +91,24 @@ for rider_name in RIDER_DICT:
             except:
                 content = ';{};{};{};{};{};{};{};{};'.format(info[0], info[1], info[2], info[3],info[4],info[5],info[6],None)
                 f.write(content+ '\n')
+            com_t[count] += info[5]
+            obj[count] += info[6]
             print(content)
         f.write('전체예측수;정답수;전체발생수;정답수; \n ')
         f.write('{};{};{};{}; \n '.format(ox_table[0], ox_table[1], ox_table[2],ox_table[3]))
         count += 1
-
-
+    #f2정보
+    euc_dist1 = round(math.sqrt(
+        (rider.LP1p_coeff[0] - rider.coeff[0]) ** 2 + (rider.LP1p_coeff[1] - rider.coeff[1]) ** 2 + (rider.LP1p_coeff[2] - rider.coeff[2]) ** 2), 4)
+    euc_dist2 = round(math.sqrt(
+        (rider.LP2p_coeff[0] - rider.coeff[0]) ** 2 + (rider.LP2p_coeff[1] - rider.coeff[1]) ** 2 + (rider.LP2p_coeff[2] - rider.coeff[2]) ** 2), 4)
+    euc_dist3 = round(math.sqrt(
+        (rider.LP2p_coeff[0] - rider.LP1p_coeff[0]) ** 2 + (rider.LP2p_coeff[1] - rider.LP1p_coeff[1]) ** 2 + (
+                    rider.LP2p_coeff[2] - rider.LP1p_coeff[2]) ** 2), 4)
+    f2_content = ';{};{};{};{};{};{};{};{};{};\n'.format(euc_dist1, com_t[0], len(rider.LP1History), obj[0], euc_dist2, com_t[1], len(rider.LP2History),obj[1],euc_dist3)
+    f2.write(f2_content)
 f.close()
-
+f2.close()
 #데이터 확인
 """
 print('고객 거리 확인')

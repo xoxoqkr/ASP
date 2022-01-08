@@ -250,13 +250,13 @@ def SystemRunner(env, rider_set, customer_set, cool_time, ox_table ,interval=10,
 
                     # LP1도 기존의 해가 만족하지 못할 때 수행
                     LP1past_choices = []
-                    satisfy = True
+                    LP1_satisfy = True
                     LP1_selected_value = np.dot(rider.LP1p_coeff,selected[:len(rider.LP1p_coeff)])
                     for other_info in others:
                         if LP1_selected_value < np.dot(rider.LP1p_coeff,other_info[:len(rider.LP1p_coeff)]):
-                            satisfy = False
+                            LP1_satisfy = False
                             break
-                    if satisfy == True:
+                    if LP1_satisfy == True:
                         LP1feasibility = False
                     else:
                         for index1 in indexs:
@@ -269,14 +269,14 @@ def SystemRunner(env, rider_set, customer_set, cool_time, ox_table ,interval=10,
                                                                               weight_sum=weight_sum)
                     #LP2블럭
                     LP2past_choices = []
-                    satisfy = True
+                    LP2_satisfy = True
                     LP2_selected_value = np.dot(rider.LP2p_coeff,selected[:len(rider.LP2p_coeff)])
                     for other_info in others:
                         if LP2_selected_value < np.dot(rider.LP2p_coeff,other_info[:len(rider.LP2p_coeff)]):
                             rider.violated_choice_info.append(copy.deepcopy(len(rider.choice_info)))
-                            satisfy = False
+                            LP2_satisfy = False
                             break
-                    if satisfy == True:
+                    if LP2_satisfy == True:
                         LP2feasibility = False
                     else:
                         for index1 in rider.violated_choice_info[:len(rider.violated_choice_info)-1] + indexs[:max(1, int(len(indexs) * beta - len(rider.violated_choice_info)))]:
