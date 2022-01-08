@@ -266,6 +266,7 @@ def ReviseCoeffAP1(selected, others, org_coeff, past_data = [], Big_M = 1000, we
     #print(m.display())
     #print(m.getVars())
     m.write("test_file.lp")
+    obj = []
     #input('모형 확인')
     try:
         print('Obj val: %g' % m.objVal)
@@ -273,10 +274,14 @@ def ReviseCoeffAP1(selected, others, org_coeff, past_data = [], Big_M = 1000, we
         for val in m.getVars():
             if val.VarName[0] == 'w':
                 res.append(float(val.x))
-        return True, res, exe_t
+            elif val.VarName[0] == 'y':
+                obj.append(float(val.x))
+            else:
+                pass
+        return True, res, exe_t, sum(obj)
     except:
         print('Infeasible')
-        return False, None, exe_t
+        return False, None, exe_t, 0
 
 
 
@@ -356,6 +361,7 @@ def ReviseCoeffAP2(selected, others, org_coeff, past_data = [], Big_M = 1000, we
     #print(m.display())
     #print(m.getVars())
     m.write("test_file.lp")
+    obj = []
     #input('모형 확인')
     try:
         print('Obj val: %g' % m.objVal)
@@ -365,10 +371,14 @@ def ReviseCoeffAP2(selected, others, org_coeff, past_data = [], Big_M = 1000, we
         for val in m.getVars():
             if val.VarName[0] == 'w':
                 res.append(float(val.x))
-        return True, res, exe_t
+            elif val.VarName[0] == 'y':
+                obj.append(float(val.x))
+            else:
+                pass
+        return True, res, exe_t, sum(obj)
     except:
         print('Infeasible')
-        return False, None, exe_t
+        return False, None, exe_t, 0
 
 
 def LogScore(coeff, vector):
