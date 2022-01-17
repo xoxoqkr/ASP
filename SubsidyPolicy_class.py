@@ -23,7 +23,7 @@ def indexReturner2DBiggerThan0(list2D, val = 0):
     return res
 
 
-def FeeUpdater(rev_v, customer_set, riders, rider_set ,cts_name, now_time, subsidy_offer = [],subsidy_offer_count= [], upper = 10000, print_para = False):
+def FeeUpdater(rev_v, customer_set, riders, rider_set ,cts_name, now_time, subsidy_offer = [],subsidy_offer_count= [], upper = 1000, print_para = False):
     """
     계산한 보조금을 고객들에게 반영함.
     :param rev_v: 계산된 보조금 결과
@@ -95,7 +95,8 @@ def CalculateRiderOrder(rider_set, now_time):
                 d_orders_res.append(index)
                 break
             index += 1
-    #print('d_orders_res',d_orders_res)
+    print('d_orders_res',d_orders_res)
+    #input('라이더 선택 순서 확인;{}'.format(d_orders))
     return d_orders_res
 
 
@@ -142,7 +143,7 @@ def InputValueReform(v_old, times, end_times, customer_num,rider_num,upper, dumm
 
 
 
-def ProblemInput(rider_set, customer_set, now_time, minus_para = True, dummy_customer_para = True, upper = 1500, toCenter = True, who = 'test_platform'):
+def ProblemInput(rider_set, customer_set, now_time, minus_para = True, dummy_customer_para = True, upper = 1500, toCenter = True, who = 'test_platform', LP_type = 'LP2'):
     """
     Monetary Incentive Allocation(SubsidyAllocation)문제를 풀기 위한 input 값을 계산
     :param rider_set:라이더 dict <- 생성된 라이더가 저장되는 dict
@@ -166,7 +167,7 @@ def ProblemInput(rider_set, customer_set, now_time, minus_para = True, dummy_cus
     for rider_name in riders:
         rider = rider_set[rider_name]
         d_orders.append([rider_name, rider.end_time])
-        ct_infos = Basic.PriorityOrdering(rider, cts, toCenter=toCenter, minus_para = minus_para, sort_para = False, who = who)
+        ct_infos = Basic.PriorityOrdering(rider, cts, toCenter=toCenter, minus_para = minus_para, sort_para = False, who = who, LP_type= LP_type)
         for info in ct_infos:
             customer = customer_set[info[0]]
             values.append(info[1])
@@ -280,7 +281,7 @@ def SystemRunner(env, rider_set, customer_set, run_time, interval=10, No_subsidy
         v_old, rider_names, cts_name, d_orders_res, times, end_times = ProblemInput(rider_set, customer_set, env.now, upper=upper, dummy_customer_para = dummy_customer_para, who = 'test_platform')  # 문제의 입력 값을 계산
         urgent_cts, tem1 = Basic.WhoGetPriority(un_cts, len(rider_names), env.now, time_thres=time_thres)  # C_p 계산
         expected_cts, dummy = ExpectedSCustomer(rider_set, rider_names, d_orders_res, customer_set, round(env.now,2) , toCenter = toCenter, who = 'platform')
-        print('T {} 데이터 확인 {} {} {} {}'.format(int(env.now), urgent_cts,expected_cts,rider_names,cts_name))
+        print('T {} 데이터 확인 급한 고객;{} 예상 선택 고객;{};라이더 선택 순서; {};주문 선택 가능한 라이더들;{}'.format(int(env.now), urgent_cts,expected_cts,d_orders_res,rider_names))
         if sorted(urgent_cts) == sorted(expected_cts) or len(urgent_cts) == 0 or len(rider_names) <= 1 or len(
                 cts_name) <= 1 or No_subsidy == True:
             print('IP 풀이X', env.now,'급한 고객 수:', len(urgent_cts), '// 예상 매칭 고객 수:', expected_cts)
@@ -321,7 +322,20 @@ def SystemRunner(env, rider_set, customer_set, run_time, interval=10, No_subsidy
         Basic.InitializeSubsidy(customer_set) # 보조금 초기화
         Basic.DefreezeAgent(rider_set, type = 'rider') #라이더 반영
         Basic.DefreezeAgent(customer_set, type = 'customer') #고객 반영
-
+        #input('d_orders_res 확인 ;{}'.format(d_orders_res))
+        test = []
+        for rider_name in rider_set:
+            rider = rider_set[rider_name]
+            try:
+                if env.now - interval <= rider.choice_info[-1][0] < env.now:
+                    test.append([rider.name, rider.choice_info[-1][0]])
+            except:
+                pass
+        if len(test) > 0:
+            test.sort(key=operator.itemgetter(1))
+            #print(d_orders_res)
+            #print('T {} 주문 선택 순서 확인 {}'.format(int(env.now), test))
+            #input('T {} 주문 선택 순서 확인 {}'.format(int(env.now), test))
         # updater
         """
         for rider_name in rider_set:

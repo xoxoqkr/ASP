@@ -9,7 +9,11 @@ import InstanceGen_class
 import ResultSave_class
 import numpy as np
 import math
+import ValueRevise
+import copy
 
+
+global data_dir
 #필요한 인스턴스 생성
 #0 시뮬레이션 환경 파라메터
 run_time = 900
@@ -31,13 +35,15 @@ rider_start_point = [26,26]#[36,36]
 driver_num = 80
 #2 플랫폼 파라메터
 dummy_customer_para = False #라이더가 고객을 선택하지 않는 경우의 input을 추가 하는가?
-coeff_revise_option = True #True : 플랫폼이 파라메터 갱신 시도/ False : 파라메터 갱신 시도 X
+coeff_revise_option = False #True : 플랫폼이 파라메터 갱신 시도/ False : 파라메터 갱신 시도 X
 driver_error_pool = np.random.normal(500, 50, size=100)
 basic_fee = 2500
 steps = []
 zero_dist = 3
 init_inc = 5
 step_inc = 135
+re_new_type = False
+
 for i in range(11):
     if i < zero_dist:
         steps.append([i*2 ,(i+1)*2,0])
@@ -51,10 +57,10 @@ customer_wait_time = 80
 fee = None #Basic.distance(store_loc, customer_loc)*120 + 3500 -> 이동거리*120 + 기본료(3500)
 #4 시나리오 파라메터.
 Problem_states = []
-ITER_NUM_list =[0]
+ITER_NUM_list =[0,0,0,0,0,0]
 mean_list = [0,0,0]
 std_list = [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9]
-data_dir = '데이터/new_data_2_Random' # new_data_1' ##'new_data_2_RandomCluster'
+#data_dir = '데이터/new_data_1' # new_data_1' ##'new_data_2_RandomCluster' ###'new_data_2_Random
 
 datas = [[data_dir, False,'subsidy'],[data_dir, True,'normal']] #False의 경우 보조금을 지급하는 경우, #True의 경우는 보조금을 지급하지 않는 경우
 
@@ -71,6 +77,8 @@ for i in datas:
 for data in datas:
     data_index = datas.index(data)
     print('check',data)
+    yesterday_RIDER_DICT = []
+    day_count = 0
     for ite in ITER_NUM_list:
         #####Runiing part######
         subsidy_offer = []
@@ -82,8 +90,10 @@ for data in datas:
         env.process(InstanceGen_class.DriverMaker(env, RIDER_DICT, CUSTOMER_DICT, end_time=run_time, speed=speed, intervals= rider_intervals[0],
                                                   interval_para= True, toCenter = toCenter, run_time= run_time, error= np.random.choice(driver_error_pool), driver_left_time = driver_left_time,
                                                   print_para = print_para, start_pos = rider_start_point, value_cal_type = value_cal_type,coeff_revise_option = coeff_revise_option,
-                                                  num_gen=driver_num))
-        env.process(InstanceGen_class.CustomerGeneratorForIP(env, CUSTOMER_DICT, data[0] + '.txt', customer_wait_time=customer_wait_time, basic_fee = basic_fee, steps = steps))
+                                                  num_gen=driver_num, pref_info= 'test_rider',re_new= re_new_type, day_count=day_count, yesterday_RIDER_DICT = yesterday_RIDER_DICT))
+        env.process(InstanceGen_class.CustomerGeneratorForIP(env, CUSTOMER_DICT, data[0] + '.txt', customer_wait_time=customer_wait_time))
+        env.process(ValueRevise.SystemRunner(env, RIDER_DICT, CUSTOMER_DICT, run_time, [0,0,0,0], weight_sum=True,
+                                             revise=True, beta=1, LP_type='LP2', checker = False))
         env.process(SubsidyPolicy_class.SystemRunner(env, RIDER_DICT, CUSTOMER_DICT, run_time, interval=solver_running_interval, No_subsidy = data[1],
                                                      subsidy_offer=subsidy_offer, subsidy_offer_count = subsidy_offer_count, upper = upper,
                                                      checker= checker, toCenter = toCenter, dummy_customer_para = dummy_customer_para))
@@ -91,4 +101,24 @@ for data in datas:
         ####### 실험 종료 후 결과 저장 ########
         info = ResultSave_class.DataSave(data, RIDER_DICT, CUSTOMER_DICT, insert_thres, speed, run_time, subsidy_offer, subsidy_offer_count, ite, mean_list, std_list)
         master_info[data_index].append(info)
+        day_count += 1
+        #yesterday_RIDER_DICT = copy.deepcopy(RIDER_DICT)
+        #전날 라이더의 데이터를 저장하는 과정
+        yesterday_RIDER_DICT = []
+        for rider_name in RIDER_DICT:
+            tem = []
+            tem.append(copy.deepcopy(RIDER_DICT[rider_name].p_history))
+            tem.append(copy.deepcopy(RIDER_DICT[rider_name].violated_choice_info))
+            tem.append(copy.deepcopy(RIDER_DICT[rider_name].LP1History))
+            tem.append(copy.deepcopy(RIDER_DICT[rider_name].LP2History))
+            tem.append(copy.deepcopy(RIDER_DICT[rider_name].LP1p_coeff))
+            tem.append(copy.deepcopy(RIDER_DICT[rider_name].LP2p_coeff))
+            tem.append(copy.deepcopy(RIDER_DICT[rider_name].choice_info))
+            tem.append(copy.deepcopy(RIDER_DICT[rider_name].coeff))
+            yesterday_RIDER_DICT.append(tem)
+            print('이력 확인;{}'.format(RIDER_DICT[rider_name].choice_info))
+        for rider in RIDER_DICT:
+            print('목표 ;{}; -> LP1종료;{}; ->LP2종료;{};데이터수 ;{};{}'.format(RIDER_DICT[rider].coeff, RIDER_DICT[rider].LP1p_coeff,
+                                                                       RIDER_DICT[rider].LP2p_coeff,len(RIDER_DICT[rider].LP1History),len(RIDER_DICT[rider].LP2History)))
+        #input('확인 필요')
 ResultSave_class.DataSaver4_summary(master_info, saved_name="res/ITE_scenario_compete_mean_" + str(mean_list[ite]) + 'std' + str(std_list[ite]))

@@ -304,7 +304,7 @@ def DataSave(data, RIDER_DICT, CUSTOMER_DICT, insert_thres, speed, run_time,subs
         std_list[ite]) + "_ite_info_save.txt", 'a')
     for ele in info:
         f.write(str(ele) + '\n')
-    f.close
+    f.close()
     CustomerDataSaver(CUSTOMER_DICT,
                                    'res/' + data[2] + str(ite) + "mean_" + str(mean_list[ite]) + "std_" + str(
                                        std_list[ite]) + "_ct_save")

@@ -55,7 +55,7 @@ env.process(InstanceGen_class.DriverMaker(env, RIDER_DICT, CUSTOMER_DICT, end_ti
                                           intervals=rider_intervals[0], interval_para=True, toCenter=toCenter,
                                           run_time=driver_make_time, error=np.random.choice(driver_error_pool), pref_info = 'test_rider',
                                           driver_left_time = driver_left_time, num_gen= driver_num,ExpectedCustomerPreference=ExpectedCustomerPreference,rider_coeff=rider_coeff))
-env.process(InstanceGen_class.CustomerGeneratorForIP(env, CUSTOMER_DICT, data_dir + '.txt', input_fee=fee, add_fee= add_fee, steps= steps, input_loc= input_para,
+env.process(InstanceGen_class.CustomerGeneratorForIP(env, CUSTOMER_DICT, data_dir + '.txt', input_fee=fee, input_loc= input_para,
                                                      type_num = type_num, std = std, input_instances= input_instances))
 env.process(ValueRevise.SystemRunner(env, RIDER_DICT, CUSTOMER_DICT, run_time, ox_table, weight_sum = weight_sum, revise = revise_para, beta = beta, LP_type = LP_type))
 env.run(until=run_time)

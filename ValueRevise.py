@@ -41,13 +41,27 @@ def InputCalculate2(rider, customer_set, index = -1, LP_type = 'LP1'):
     """
     rev_infos = []
     check = []
-    #print('Index#',index,'/rider_choice: ',rider.choice_info[index])
+    print('InputCalculate2_index_정보;{}'.format(index))
+    #try:
+    #    print('info 정상 {}'.format(rider.choice_info[index][3]))
+    #except:
+    #    input('info 에러 {}'.format(rider.choice_info[index]))
+    if len(rider.choice_info) == 0 or len(rider.choice_info[index]) < 3:
+        input('정보 확인 3333; {}'.format(rider.choice_info[index]))
+        return [], []
     for info in rider.choice_info[index][3]:
+        print('정보 확인 1234 ;; {}'.format(rider.choice_info[index]))
         ct_name = info[0]
         dist_cost = info[2]
-        customer_type = customer_set[ct_name].type
-        type_cost = rider.expect[customer_type]
-        fee = customer_set[ct_name].fee[0]
+        #try:
+        #    print('에러 없음 {} ; {}; {}'.format(len(customer_set), ct_name, info))
+        #    customer_type = customer_set[ct_name].type
+        #except:
+        #    print('에러 발생 {} ; {}; {}'.format(len(customer_set), ct_name, info))
+        type_cost = rider.expect[info[11]]
+        #type_cost = rider.expect[customer_type]
+        fee = info[3]
+        #fee = customer_set[ct_name].fee[0]
         if LP_type == 'LP1':
             rev_infos.append([-dist_cost, -type_cost, fee,ct_name,info[1],info[-1],-type_cost*rider.LP1p_coeff[1],-type_cost*rider.LP1p_coeff[1]])
         else:
@@ -193,43 +207,13 @@ def SystemRunner(env, rider_set, customer_set, cool_time, ox_table ,interval=10,
         #ox_table_save
         print("차이발생/T now:",now,"/예상한 선택", expectation , "/실제 선택", actual, "/실제선택2:",actual_choice)
         if False:
-        #if len(expectation) > 0:
-            print("라이더가 예상과 다른 고객 선택")
-            for info in expectation:
-                rider = rider_set[info[0]]
-                selected, others = InputCalculate2(rider, customer_set) #실제 라이더가 선택한 고객의 [-dist_cost, -type_cost, fee]
-                #ChoiceCheck(rider, customer_set)
-                past_choices = []
-                indexs = list(range(len(rider.choice_info) - 1))
-                indexs.reverse()
-                for index1 in indexs:
-                    past_select, past_others = InputCalculate2(rider, customer_set, index=index1) #실제 라이더가 선택할 시점의 [-dist_cost, -type_cost, fee]
-                    if len(past_others) > 0:
-                        past_choices.append([past_select, past_others])
-                    #print("추가되는 사례", len(past_choices))
-                    #print('past_choices', past_choices)
-                    #input("추가 사례 확인")
-                #input("계산 확인2.")
-                #print('선택 됨 {} 그 외 {}'.format(selected, others))
-                #feasibility, res = lpg.ReviseCoeffAP(selected, others, rider.p_coeff, past_data=past_choices)
-                print('정보1{} 정보2{}'.format(selected, others[:2]))
-                if revise == True:
-                    feasibility, res, exe_t = lpg.ReviseCoeffAP2(selected, others, rider.p_coeff, past_data=past_choices, weight_sum = weight_sum)
-                    # 계수 갱신
-                if revise == True and feasibility == True:
-                    print("목표::", rider.coeff)
-                    print("갱신전::", rider.p_coeff)
-                    print("res::", res)
-                    revise_value = 0
-                    for index in range(len(res)):
-                        rider.p_coeff[index] += res[index]
-                        revise_value += abs(res[index])
-                    if revise_value > 0:
-                        input('갱신됨::{}'.format(rider.p_coeff))
-                        rider.p_history.append(copy.deepcopy(rider.p_coeff)+[copy.deepcopy(len(rider.choice)),len(past_choices)])
+            pass
         else:
+            print('시작 확인')
             for rider_name in rider_set:
                 rider = rider_set[rider_name]
+                print('라이더:',rider.name)
+                #print(rider.choice_info)
                 if len(rider.choice_info) > 0 and env.now - interval <= rider.choice_info[-1][0]:
                     print('R{} T:{}~{}에 고객 {} 선택'.format(rider_name, int(env.now - interval), int(env.now), rider.choice_info[-1]))
                     selected, others = InputCalculate2(rider, customer_set)  # 실제 라이더가 선택한 고객의 [-dist_cost, -type_cost, fee]
@@ -279,11 +263,21 @@ def SystemRunner(env, rider_set, customer_set, cool_time, ox_table ,interval=10,
                     if LP2_satisfy == True:
                         LP2feasibility = False
                     else:
+                        error_para = False
                         for index1 in rider.violated_choice_info[:len(rider.violated_choice_info)-1] + indexs[:max(1, int(len(indexs) * beta - len(rider.violated_choice_info)))]:
-                            past_select, past_others = InputCalculate2(rider, customer_set,
-                                                                       index=index1, LP_type= 'LP2')  # 실제 라이더가 선택할 시점의 [-dist_cost, -type_cost, fee]
+                            if index1 not in range(len(rider.choice_info)):
+                                #input('탐색 에러 발생 {} ;; {}'.format(index1, len(rider.choice_info)))
+                                past_select = []
+                                past_others = []
+                                error_para = True
+                            else:
+                                past_select, past_others = InputCalculate2(rider, customer_set,
+                                                                           index=index1, LP_type= 'LP2')  # 실제 라이더가 선택할 시점의 [-dist_cost, -type_cost, fee]
                             if len(past_others) > 0:
                                 LP2past_choices.append([past_select, past_others])
+                        if error_para == True:
+                            #input('데이터 확인 {}'.format(LP2past_choices))
+                            pass
                         LP2feasibility, LP2res, LP2exe_t, LP2_obj = lpg.ReviseCoeffAP2(selected, others, rider.LP2p_coeff, past_data=LP2past_choices,
                                                               weight_sum=weight_sum)
 

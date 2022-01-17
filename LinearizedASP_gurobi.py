@@ -10,7 +10,7 @@ import numpy
 
 
 
-def LinearizedSubsidyProblem(driver_set, customers_set, v_old, ro, times, end_times, lower_b = False, upper_b = False, sp=None, print_gurobi=False,  solver=-1, delta = 100, relax = 100):
+def LinearizedSubsidyProblem(driver_set, customers_set, v_old, ro, times, end_times, lower_b = False, upper_b = False, sp=None, print_gurobi=False,  solver=-1, delta = 500, relax = 100):
     """
     선형화된 버전의 보조금 문제
     :param driver_set: 가능한 라이더 수
@@ -305,7 +305,7 @@ def ReviseCoeffAP1(selected, others, org_coeff, past_data = [], Big_M = 1000, we
     m = gp.Model("mip1")
     w = m.addVars(len(org_coeff), lb = 0, vtype=GRB.CONTINUOUS, name="w")
     y = m.addVars(1 + len(past_data), max_data_size, vtype = GRB.CONTINUOUS, name= "y") #error
-    m.setObjective(gp.quicksum(y[i,j] for i in dummy_indexs for j in error_term_indexs), GRB.MINIMIZE)
+    m.setObjective(Big_M*gp.quicksum(y[i,j] for i in dummy_indexs for j in error_term_indexs), GRB.MINIMIZE)
     dummy_index = 0
     error_term_index = 0
     #계수 합 관련

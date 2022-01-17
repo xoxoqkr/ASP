@@ -217,6 +217,7 @@ class Rider(object):
                     if pref == 'test_rider' or pref == 'test_platform':
                         #self.choice_info.append([int(env.now), ct_name, self.last_location , rev_infos])
                         self.choice_info.append([int(env.now), ct_name, self.last_location, infos])
+                        #print('선택 정보 저장 {}'.format())
                 #print('Rider',self.name,'assign2',ct_name, 'at', env.now)
                 if infos == None:
                     pass
@@ -278,14 +279,14 @@ class Rider(object):
                         time = distance(self.last_location, ct.location[0]) / self.speed
                         #print('With in 1:',self.last_location, '2:', ct.location[0])
                         time += ct.time_info[6]
-                        end_time += time
+                        #end_time += time
                         ct.loaded = True
                         #ct.time_info[2] = round(env.now, 2)
                         yield env.timeout(time)
                         ct.time_info[2] = round(env.now, 2)
                         time = distance(ct.location[0], ct.location[1]) / self.speed
                         time += ct.time_info[7]
-                        end_time += time
+                        #end_time += time
                         self.served.append([ct.name, 0])
                         self.last_location = ct.location[0]
                         self.past_route.append(ct.location[0])
@@ -371,7 +372,7 @@ def CheckTimeFeasiblity(veh, customer, customers, toCenter = True, rider_route_c
     #print('고객 {} 기준 비용 {}'.format(customer.name , cost))
     return time_para, cost, round(time,1)
 
-def PriorityOrdering(veh, customers, minus_para = False, toCenter = True, who = 'test_rider', save_info = False, sort_para = True, rider_route_cal_type = 'return', last_location = None):
+def PriorityOrdering(veh, customers, minus_para = False, toCenter = True, who = 'test_rider', save_info = False, sort_para = True, rider_route_cal_type = 'return', last_location = None, LP_type = 'LP2'):
     """
     veh의 입장에서 customers의 고객들을 가치가 높은 순서대로 정렬한 값을 반환
     :param veh: class rider
@@ -403,9 +404,19 @@ def PriorityOrdering(veh, customers, minus_para = False, toCenter = True, who = 
             cost2 = veh.expect[customer.type] * veh.coeff[1]
             cost = cost*veh.coeff[0]
         elif who == 'test_platform':
-            fee = customer.fee[0] * veh.p_coeff[2]
-            cost2 = veh.expect[customer.type] * veh.p_coeff[1]
-            cost = cost*veh.p_coeff[0]
+            if LP_type == 'LP1':
+                fee = customer.fee[0] * veh.LP1p_coeff[2]
+                cost2 = veh.expect[customer.type] * veh.LP1p_coeff[1]
+                cost = cost*veh.LP1p_coeff[0]
+            elif LP_type == 'LP2':
+                fee = customer.fee[0] * veh.LP2p_coeff[2]
+                cost2 = veh.expect[customer.type] * veh.LP2p_coeff[1]
+                cost = cost*veh.LP2p_coeff[0]
+            else:
+                fee = customer.fee[0] * veh.p_coeff[2]
+                cost2 = veh.expect[customer.type] * veh.p_coeff[1]
+                cost = cost*veh.p_coeff[0]
+
         else:
             pass
         #print('cost2', cost2,'::', fee - cost- cost2)
@@ -422,6 +433,7 @@ def PriorityOrdering(veh, customers, minus_para = False, toCenter = True, who = 
         else:
             res.append([customer.name,int(fee - cost - cost2),int(org_cost),int(fee), time,'N/A2',cost, customer.type, save_fee,end_slack_time])
         res[-1].append(cost2)
+        res[-1].append(customer.type)
     if len(res) > 0:
         if sort_para == True:
             res.sort(key=operator.itemgetter(1), reverse = True)

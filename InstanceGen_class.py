@@ -6,7 +6,7 @@ import random
 import math
 import numpy as np
 import matplotlib.pyplot as plt
-
+import copy
 
 def InstanceGen(unit_dist= 8, std = 1, max_x = 50, max_y = 50, gen_n = 100):
     coordinates = []
@@ -43,7 +43,7 @@ def FeeCalculator(distance, steps):
 
 
 
-def CustomerGeneratorForIP(env, customer_dict, dir=None, end_time=1000,  customer_wait_time = 40, input_fee = None, lamda = None, input_loc = False, add_fee = 0, basic_fee = 3500, steps = [],
+def CustomerGeneratorForIP(env, customer_dict, dir=None, end_time=1000,  customer_wait_time = 40, input_fee = None, lamda = None, input_loc = False,
                            unit_dist = 8, std = 1, max_x = 50, max_y = 50, type_num = 4, input_instances = None):
     """
     주어진 입력 값에 대한 고객을 생성. 아래 요인들이 중요
@@ -100,7 +100,7 @@ def CustomerGeneratorForIP(env, customer_dict, dir=None, end_time=1000,  custome
 def DriverMaker(env, driver_dict, customer_set ,speed = 2, end_time = 800, intervals = [], interval_para = False, interval_res = [],
                 toCenter = True, error = 0, run_time = 900, pref_info = None, driver_left_time = 120, print_para = False,
                 start_pos = [26,26], value_cal_type = 'return', num_gen = 10, coeff_revise_option = False, weight_sum = False,
-                ExpectedCustomerPreference = [0,250,500,750], rider_coeff = None):
+                ExpectedCustomerPreference = [0,250,500,750], rider_coeff = None, re_new = True, day_count = 0, yesterday_RIDER_DICT = None):
     """
     주어진 입력값으로 행동하는 라이더를 생성
     :param env: simpy Environment
@@ -126,6 +126,21 @@ def DriverMaker(env, driver_dict, customer_set ,speed = 2, end_time = 800, inter
                             pref_info= pref_info, left_time=driver_left_time, print_para = print_para, start_pos= start_pos,
                             value_cal_type = value_cal_type, coeff_revise_option = coeff_revise_option, weight_sum = weight_sum,
                             ExpectedCustomerPreference = ExpectedCustomerPreference)
+        #input('day_count {}, renew{}, yesterday_RIDER_DICT {}'.format(day_count, re_new,yesterday_RIDER_DICT))
+        if day_count > 0 and re_new == False and yesterday_RIDER_DICT != None:
+            #input('라이더 갱신 시도')
+            try:
+                rider.p_history = yesterday_RIDER_DICT[name][0]
+                rider.violated_choice_info = yesterday_RIDER_DICT[name][1]
+                rider.LP1History = yesterday_RIDER_DICT[name][2]
+                rider.LP2History = yesterday_RIDER_DICT[name][3]
+                rider.LP1p_coeff = yesterday_RIDER_DICT[name][4]
+                rider.LP2p_coeff = yesterday_RIDER_DICT[name][5]
+                rider.choice_info = yesterday_RIDER_DICT[name][6]
+                rider.coeff = yesterday_RIDER_DICT[name][7]
+                #input('라이더 갱신 성공')
+            except:
+                input('라이더 갱신 실패')
         if rider_coeff != None:
             rider.coeff = rider_coeff
         driver_dict[name] = rider
