@@ -220,7 +220,7 @@ def ExpectedSCustomer(rider_set, rider_names, d_orders_res, customer_set, now_ti
         last_location = rider.now_ct[1]
         print('T {} 플랫폼 선택 시점의 설정 {} {} {}'.format( rider.env.now , toCenter, who, rider_route_cal_type))
         ct_infos = Basic.PriorityOrdering(rider, customers, toCenter=toCenter, who=who, rider_route_cal_type= rider_route_cal_type, last_location = last_location)
-        print('플랫폼 예상 위치 {} :: 정보 확인{}'.format(rider.now_ct[1],ct_infos))
+        print('라이더 {}::플랫폼 예상 위치 {} :: 정보 확인{}'.format(rider.name, rider.now_ct[1],ct_infos))
         if len(ct_infos) > 0:
             info = ct_infos[0]
             if info[1] > 0:
@@ -367,6 +367,6 @@ def SystemRunner(env, rider_set, customer_set, run_time, interval=10, No_subsidy
         """
 
         if checker == False:
-            print('Sys Run/T:' + str(env.now))
+            print('보조금 Sys Run/T:' + str(env.now))
         else:
-            input('Sys Run/T:' + str(env.now))
+            input('보조금 Sys Run/T:' + str(env.now))

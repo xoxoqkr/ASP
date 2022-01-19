@@ -171,9 +171,9 @@ def RiderGenInterval(dir, lamda = None):
         #rider gen lamda 읽기.
         datas = open(dir, 'r')
         lines = datas.readlines()
-        for line in lines[2:]:
+        for line in lines[1:]:
             interval = line.split(',')
-            interval = interval[2:len(interval)]
+            interval = interval[1:len(interval)]
             tem = []
             for i in interval:
                 # print(i)

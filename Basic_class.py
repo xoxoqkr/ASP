@@ -88,7 +88,7 @@ class Rider(object):
         self.gen_time = int(env.now)
         self.left_time = None
         self.wait = wait
-        self.end_time = 0
+        self.end_time = env.now
         self.left = False
         self.earn_fee = []
         self.fee_analyze = []
@@ -148,7 +148,7 @@ class Rider(object):
         now_time = round(self.env.now,1)
         ava_cts = UnloadedCustomer(customer_set, now_time)
         ava_cts_class = []
-        #print('test1', ava_cts)
+        print('T:{}/ 라이더 {} 빈 고객 수{}'.format(int(self.env.now),self.name, len(ava_cts)))
         ava_cts_names = []
         if len(ava_cts) > 0:
             if type(ava_cts[0]) == int:
@@ -214,6 +214,7 @@ class Rider(object):
                     for info in infos:
                         rev_infos.append([info[0],info[2]])
                     """
+                    print('T:{}/ 라이더 {} 고객 없음'.format(int(env.now), self.name))
                     if pref == 'test_rider' or pref == 'test_platform':
                         #self.choice_info.append([int(env.now), ct_name, self.last_location , rev_infos])
                         self.choice_info.append([int(env.now), ct_name, self.last_location, infos])
@@ -267,6 +268,7 @@ class Rider(object):
                     except:
                         pass
                     self.end_time = end_time
+                    print('라이더{}종료시간:{}'.format(self.name, self.end_time))
                     self.exp_last_location = ct.location[1]
                     #print('Rider', self.name, 'select', ct_name, 'at', env.now, 'EXP T', self.end_time)
                     #print('1:', self.last_location, '2:', ct.location)
@@ -314,6 +316,7 @@ class Rider(object):
                 self.end_time = env.now + wait_time
                 self.idle_times[1].append(wait_time) #이미 수행하는 주문이 있는 경우
                 yield self.env.timeout(wait_time)
+                print('T:{}/ 라이더 {} 주문 없음으로 대기'.format(int(env.now), self.name))
 
 
 def UnloadedCustomer(customer_set, now_time):
@@ -524,8 +527,8 @@ def AvaRider(rider_set, now_time,interval = 10):
         #print(rider.name, '::', cond1, '::',cond2, '::',cond3)
         if cond1 == True and cond2 == True and cond3 == True:
             res.append(rider.name)
-            #print(rider.name,'::',rider.end_time ,'<', now_time + interval)
-    #print('AvaRider#', len(res))
+            print(rider.name,'::',rider.end_time ,'<', now_time + interval)
+    print('AvaRider#', len(res))
     return res
 
 

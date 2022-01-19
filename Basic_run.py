@@ -57,12 +57,12 @@ customer_wait_time = 80
 fee = None #Basic.distance(store_loc, customer_loc)*120 + 3500 -> 이동거리*120 + 기본료(3500)
 #4 시나리오 파라메터.
 Problem_states = []
-ITER_NUM_list =[0,0,0,0,0,0]
+ITER_NUM_list =[0,0,0]
 mean_list = [0,0,0]
 std_list = [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9]
 #data_dir = '데이터/new_data_1' # new_data_1' ##'new_data_2_RandomCluster' ###'new_data_2_Random
-
-datas = [[data_dir, False,'subsidy'],[data_dir, True,'normal']] #False의 경우 보조금을 지급하는 경우, #True의 경우는 보조금을 지급하지 않는 경우
+datas = [[data_dir, False,'subsidy']]
+#datas = [[data_dir, False,'subsidy'],[data_dir, True,'normal']] #False의 경우 보조금을 지급하는 경우, #True의 경우는 보조금을 지급하지 않는 경우
 
 
 
@@ -92,11 +92,13 @@ for data in datas:
                                                   print_para = print_para, start_pos = rider_start_point, value_cal_type = value_cal_type,coeff_revise_option = coeff_revise_option,
                                                   num_gen=driver_num, pref_info= 'test_rider',re_new= re_new_type, day_count=day_count, yesterday_RIDER_DICT = yesterday_RIDER_DICT))
         env.process(InstanceGen_class.CustomerGeneratorForIP(env, CUSTOMER_DICT, data[0] + '.txt', customer_wait_time=customer_wait_time))
-        env.process(ValueRevise.SystemRunner(env, RIDER_DICT, CUSTOMER_DICT, run_time, [0,0,0,0], weight_sum=True,
-                                             revise=True, beta=1, LP_type='LP2', checker = False))
+        if data[2] == 'subsidy':
+            #env.process(ValueRevise.SystemRunner(env, RIDER_DICT, CUSTOMER_DICT, run_time, [0,0,0,0], weight_sum=True,
+            #                                     revise=True, beta=1, LP_type='LP2', checker = True))
+            pass
         env.process(SubsidyPolicy_class.SystemRunner(env, RIDER_DICT, CUSTOMER_DICT, run_time, interval=solver_running_interval, No_subsidy = data[1],
                                                      subsidy_offer=subsidy_offer, subsidy_offer_count = subsidy_offer_count, upper = upper,
-                                                     checker= checker, toCenter = toCenter, dummy_customer_para = dummy_customer_para))
+                                                     checker= False, toCenter = toCenter, dummy_customer_para = dummy_customer_para))
         env.run(until=run_time)
         ####### 실험 종료 후 결과 저장 ########
         info = ResultSave_class.DataSave(data, RIDER_DICT, CUSTOMER_DICT, insert_thres, speed, run_time, subsidy_offer, subsidy_offer_count, ite, mean_list, std_list)

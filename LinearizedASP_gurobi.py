@@ -10,7 +10,7 @@ import numpy
 
 
 
-def LinearizedSubsidyProblem(driver_set, customers_set, v_old, ro, times, end_times, lower_b = False, upper_b = False, sp=None, print_gurobi=False,  solver=-1, delta = 500, relax = 100):
+def LinearizedSubsidyProblem(driver_set, customers_set, v_old, ro, times, end_times, lower_b = False, upper_b = False, sp=None, print_gurobi=False,  solver=-1, delta = 200, relax = 100, min_subsidy = 0):
     """
     선형화된 버전의 보조금 문제
     :param driver_set: 가능한 라이더 수
@@ -37,7 +37,7 @@ def LinearizedSubsidyProblem(driver_set, customers_set, v_old, ro, times, end_ti
     # D.V. and model set.
     m = gp.Model("mip1")
     x = m.addVars(len(drivers), len(customers), vtype=GRB.BINARY, name="x")
-    v = m.addVars(len(drivers), len(customers), lb = 0, vtype=GRB.CONTINUOUS, name="v")
+    v = m.addVars(len(drivers), len(customers), lb = min_subsidy, vtype=GRB.CONTINUOUS, name="v")
     cso = m.addVars(len(customers), vtype=GRB.INTEGER, name="c" )
     #선형화를 위한 변수
     y = m.addVars(len(drivers), len(customers), vtype=GRB.BINARY, name="y")

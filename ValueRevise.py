@@ -304,9 +304,9 @@ def SystemRunner(env, rider_set, customer_set, cool_time, ox_table ,interval=10,
         Basic.DefreezeAgent(rider_set, type='rider')  # 라이더 반영
         Basic.DefreezeAgent(customer_set, type='customer')  # 고객 반영
         if checker == False:
-            print('Sys Run/T:' + str(env.now))
+            print('가치함수 갱신 Sys Run/T:' + str(env.now))
         else:
-            input('Sys Run/T:' + str(env.now))
+            input('가치함수 갱신 Sys Run/T:' + str(env.now))
         #input("정보확인1")
 
 
