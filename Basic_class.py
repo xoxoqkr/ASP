@@ -117,8 +117,12 @@ class Rider(object):
         self.violated_choice_info = []
         self.LP1History = []
         self.LP2History = []
+        self.LP3History = []
+        self.LP3_2History = []
         self.LP1p_coeff = [1,1,1]
         self.LP2p_coeff = [1, 1, 1]
+        self.LP3p_coeff = [1,1,1]
+        self.LP3_2p_coeff = [1,1,1]
         env.process(self.Runner(env, customer_set, toCenter = toCenter, pref = pref_info, save_info = save_info, print_para = print_para,coeff_revise_option = coeff_revise_option, weight_sum= weight_sum))
         env.process(self.RiderLeft(left_time))
 

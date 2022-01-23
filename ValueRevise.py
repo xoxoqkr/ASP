@@ -50,7 +50,7 @@ def InputCalculate2(rider, customer_set, index = -1, LP_type = 'LP1'):
         input('정보 확인 3333; {}'.format(rider.choice_info[index]))
         return [], []
     for info in rider.choice_info[index][3]:
-        print('정보 확인 1234 ;; {}'.format(rider.choice_info[index]))
+        #print('정보 확인 1234 ;; {}'.format(rider.choice_info[index]))
         ct_name = info[0]
         dist_cost = info[2]
         #try:
@@ -184,6 +184,109 @@ def RiderChoiceWithInterval(rider_set, rider_names, now, interval = 10):
     return actual_choice
 
 
+def SolverBlock(rider, selected, others, customer_set, weight_sum = True, LP_type = 'LP1', beta = 1):
+    indexs = list(range(len(rider.choice_info) - 1))
+    indexs.reverse()
+    end_count = len(indexs)
+    if LP_type == 'LP1':
+        p_coeff = rider.LP1p_coeff
+        selected_value = np.dot(rider.p_coeff, selected[:len(rider.p_coeff)])
+    elif LP_type == 'LP2':
+        p_coeff = rider.LP2p_coeff
+        selected_value = np.dot(rider.p_coeff, selected[:len(rider.p_coeff)])
+        end_count = max(1,int(len(indexs) * beta - len(rider.violated_choice_info)))
+    elif LP_type == 'LP3':
+        p_coeff = rider.LP3p_coeff
+        selected_value = np.dot(rider.p_coeff, selected[:len(rider.p_coeff)])
+    elif LP_type == 'LP3_2':
+        p_coeff = rider.LP3_2p_coeff
+        selected_value = np.dot(rider.p_coeff, selected[:len(rider.p_coeff)])
+    else:
+        input('SolverBlock 에러 발생')
+        selected_value = 0
+    past_choices = []
+    satisfy = True
+    #input('체크0')
+    for other_info in others:
+        if selected_value < np.dot(p_coeff, other_info[:len(rider.p_coeff)]):
+            satisfy = False
+            break
+    #input('체크0-1')
+    if satisfy == True:
+        feasibility = False
+        return feasibility, None, None, None, None
+    else:
+        #input('체크0-3')
+        error_para = False
+        added_past_data = []
+        #input('체크1-1')
+        if LP_type == 'LP2':
+            added_past_data += rider.violated_choice_info[:len(rider.violated_choice_info) - 1]
+        added_past_data += indexs[:end_count]
+        #input('체크1-2')
+        for index1 in added_past_data:
+            if index1 not in range(len(rider.choice_info)):
+                # input('탐색 에러 발생 {} ;; {}'.format(index1, len(rider.choice_info)))
+                past_select = []
+                past_others = []
+                error_para = True
+            else:
+                past_select, past_others = InputCalculate2(rider, customer_set,
+                                                           index=index1,
+                                                           LP_type='LP2')  # 실제 라이더가 선택할 시점의 [-dist_cost, -type_cost, fee]
+            if len(past_others) > 0:
+                past_choices.append([past_select, past_others])
+        #input('체크2')
+        if LP_type == 'LP1':
+            feasibility, res, exe_t, obj = lpg.ReviseCoeffAP1(selected, others, rider.LP1p_coeff,past_data=past_choices,weight_sum=weight_sum)
+        elif LP_type == 'LP2':
+            feasibility, res, exe_t, obj = lpg.ReviseCoeffAP2(selected, others, rider.LP2p_coeff,past_data=past_choices,weight_sum=weight_sum)
+        elif LP_type == 'LP3':
+            feasibility, res, exe_t, obj = lpg.ReviseCoeffAP3(selected, others, rider.LP3p_coeff,past_data=past_choices,weight_sum=weight_sum)
+        elif LP_type == 'LP3_2':
+            feasibility, res, exe_t, obj = lpg.ReviseCoeffAP3(selected, others, rider.LP3_2p_coeff,past_data=past_choices,weight_sum=weight_sum, solution_space_cut= True)
+        else:
+            pass
+        input('{};{};{};{};{};{};'.format(LP_type, feasibility, res, exe_t, obj, len(past_choices)))
+        if feasibility == True:
+            return feasibility, res, exe_t, obj, len(past_choices)
+        else:
+            return feasibility, None, None, None, None
+
+
+def SolutionSaveBlock(feasibility, res, exe_t, obj, rider, past_data_num, LP_type = 'LP1'):
+    if feasibility == True:
+        revise_value = 0
+        for index in range(len(res)):
+            if LP_type == 'LP1':
+                rider.LP1p_coeff[index] = res[index]
+                revise_value = 1
+            elif LP_type == 'LP2':
+                revise_value += abs(res[index])
+                rider.LP2p_coeff[index] += res[index]
+            elif LP_type == 'LP3':
+                rider.LP3p_coeff[index] = res[index]
+                revise_value = 1
+            elif LP_type == 'LP3_2':
+                pass
+        if revise_value > 0:
+            input('결과 기록')
+            if LP_type == 'LP1':
+                rider.LP1p_coeff[index] = res[index]
+                rider.LP1History.append(copy.deepcopy(rider.LP1p_coeff) + [copy.deepcopy(len(rider.choice)), past_data_num] + [exe_t, obj])
+            elif LP_type == 'LP2':
+                rider.LP2p_coeff[index] += res[index]
+                rider.LP2History.append(copy.deepcopy(rider.LP2p_coeff) + [copy.deepcopy(len(rider.choice)), past_data_num] + [exe_t, obj])
+            elif LP_type == 'LP3':
+                rider.LP3p_coeff[index] = res[index]
+                rider.LP3History.append(copy.deepcopy(rider.LP3p_coeff) + [copy.deepcopy(len(rider.choice)), past_data_num] + [exe_t, obj])
+            elif LP_type == 'LP3_2':
+                rider.LP3_2p_coeff[index] = res[index]
+                rider.LP3_2History.append(copy.deepcopy(rider.LP3_2p_coeff) + [copy.deepcopy(len(rider.choice)), past_data_num] + [exe_t, obj])
+    else:
+        pass
+
+
 def SystemRunner(env, rider_set, customer_set, cool_time, ox_table ,interval=10, checker = False, toCenter = True, rider_route_cal_type = 'return',
                  weight_sum = False, revise = False, beta = 0, LP_type = 'LP1'):
     # 보조금 부문을 제외하고 단순하게 작동하는 것으로 시험해 볼 것.
@@ -280,7 +383,25 @@ def SystemRunner(env, rider_set, customer_set, cool_time, ox_table ,interval=10,
                             pass
                         LP2feasibility, LP2res, LP2exe_t, LP2_obj = lpg.ReviseCoeffAP2(selected, others, rider.LP2p_coeff, past_data=LP2past_choices,
                                                               weight_sum=weight_sum)
-
+                    #LP3블럭
+                    LP3past_choices = []
+                    LP3_satisfy = True
+                    LP3_selected_value = np.dot(rider.LP3p_coeff,selected[:len(rider.LP3p_coeff)])
+                    for other_info in others:
+                        if LP3_selected_value < np.dot(rider.LP3p_coeff,other_info[:len(rider.LP3p_coeff)]):
+                            LP3_satisfy = False
+                            break
+                    if LP3_satisfy == True:
+                        LP3feasibility = False
+                    else:
+                        for index1 in indexs:
+                            past_select, past_others = InputCalculate2(rider, customer_set, index=index1,
+                                                                       LP_type='LP1')  # 실제 라이더가 선택할 시점의 [-dist_cost, -type_cost, fee]
+                            if len(past_others) > 0:
+                                LP3past_choices.append([past_select, past_others])
+                        LP3feasibility, LP3res, LP3exe_t, LP3_obj = lpg.ReviseCoeffAP3(selected, others, rider.LP1p_coeff,
+                                                                              past_data=LP1past_choices,
+                                                                              weight_sum=weight_sum)
                     if LP1feasibility == True:
                         LP1revise_value = 0
                         for index in range(len(LP1res)):
@@ -298,6 +419,31 @@ def SystemRunner(env, rider_set, customer_set, cool_time, ox_table ,interval=10,
                             LP2revise_value += abs(LP2res[index])
                         if LP2revise_value > 0:
                             rider.LP2History.append(copy.deepcopy(rider.LP2p_coeff)+[copy.deepcopy(len(rider.choice)),len(LP2past_choices)] +[LP2exe_t, LP2_obj])
+                    if LP3feasibility == True:
+                        LP3revise_value = 0
+                        for index in range(len(LP3res)):
+                            rider.LP3p_coeff[index] = LP3res[index]
+                            LP3revise_value = 1
+                        if LP3revise_value > 0:
+                            #input('LP3 기록')
+                            rider.LP3History.append(copy.deepcopy(rider.LP3p_coeff) + [copy.deepcopy(len(rider.choice)), len(LP3past_choices)] + [LP3exe_t, LP3_obj])
+
+                    """
+                    #개선한 코드
+                    feasibility, res, exe_t, obj,past_data_num = SolverBlock(rider, selected, others, customer_set, weight_sum=True, LP_type='LP1', beta=1)
+                    SolutionSaveBlock(feasibility, res, exe_t, obj, rider, past_data_num, LP_type='LP1')
+                    feasibility, res, exe_t, obj,past_data_num = SolverBlock(rider, selected, others, customer_set, weight_sum=True, LP_type='LP2', beta=1)
+                    SolutionSaveBlock(feasibility, res, exe_t, obj, rider, past_data_num, LP_type='LP2')
+                    feasibility, res, exe_t, obj,past_data_num = SolverBlock(rider, selected, others, customer_set, weight_sum=True, LP_type='LP3', beta=1)
+                    SolutionSaveBlock(feasibility, res, exe_t, obj, rider, past_data_num, LP_type='LP3')                    
+                    """
+                    print('원래 결과', rider.coeff)
+                    print(LP1feasibility,'LP1:', rider.LP1p_coeff, '에러 확인',sum(rider.LP1p_coeff))
+                    print(LP2feasibility,'LP2:', rider.LP2p_coeff, '에러 확인',sum(rider.LP2p_coeff))
+                    print(LP3feasibility,'LP3:', rider.LP3p_coeff, '에러 확인',sum(rider.LP3p_coeff))
+                    if LP1feasibility == True or LP2feasibility == True or LP3feasibility == True:
+                        #input('해 확인')
+                        pass
             #print('예상과 동일한 선택 수행/ T:{}'.format(int(env.now)))
         # 보조금 초기화
         Basic.InitializeSubsidy(customer_set)  # 보조금 초기화

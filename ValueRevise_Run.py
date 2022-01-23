@@ -67,7 +67,7 @@ f.write('저장 {} \n'.format('test'))
 f2 = open("결과저장1209_보조금_정리.txt", 'a')
 f2.write('저장 {} \n'.format('test1'))
 f2.write('고객종류;{};거리 std;{};LP종류;{};beta;{};\n'.format(type_num,std, LP_type,beta))
-f2.write(';LP1;연산시간;연산횟수;obj합;LP2;연산시간;연산횟수;obj합;LP1과의 차;\n')
+f2.write(';LP1;연산시간;연산횟수;obj합;LP2;연산시간;연산횟수;obj합;LP1과의 차;LP3;연산시간;연산횟수;obj합;LP1과의 차\n')
 
 for rider_name in RIDER_DICT:
     rider = RIDER_DICT[rider_name]
@@ -75,15 +75,16 @@ for rider_name in RIDER_DICT:
     f.write('w0;w1;w2;선택한 고객 수; 쌓인 데이터수;사용 데이터 수 ;실행시간;obj;euc거리;\n')
     f.write('라이더#{};org;{};{};{}; \n'.format(rider_name, rider.coeff[0],rider.coeff[1] ,rider.coeff[2]))
     print('라이더 선호',rider.coeff)
-    info_name = ['LP1', 'LP2']
+    info_name = ['LP1', 'LP2','LP3']
     count = 0
-    com_t = [0, 0]
-    obj = [0,0]
-    for infos in [rider.LP1History, rider.LP2History]:
+    com_t = [0, 0,0]
+    obj = [0,0,0]
+    for infos in [rider.LP1History, rider.LP2History, rider.LP3History]:
         print(info_name[count])
+        #print(infos)
         f.write(';{};\n'.format(info_name[count]))
         for info in infos:
-            #print(info)
+            #input(info)
             try:
                 euc_dist = round(math.sqrt((info[0] - rider.coeff[0]) ** 2 + (info[1] - rider.coeff[1]) ** 2 + (info[2] - rider.coeff[2]) ** 2), 4)
                 content = ';{};{};{};{};{};{};{};{};'.format(info[0], info[1],info[2],info[3],info[4],info[5],info[6],euc_dist)
@@ -91,6 +92,7 @@ for rider_name in RIDER_DICT:
             except:
                 content = ';{};{};{};{};{};{};{};{};'.format(info[0], info[1], info[2], info[3],info[4],info[5],info[6],None)
                 f.write(content+ '\n')
+            #input('check1')
             com_t[count] += info[5]
             obj[count] += info[6]
             print(content)
@@ -105,7 +107,11 @@ for rider_name in RIDER_DICT:
     euc_dist3 = round(math.sqrt(
         (rider.LP2p_coeff[0] - rider.LP1p_coeff[0]) ** 2 + (rider.LP2p_coeff[1] - rider.LP1p_coeff[1]) ** 2 + (
                     rider.LP2p_coeff[2] - rider.LP1p_coeff[2]) ** 2), 4)
-    f2_content = ';{};{};{};{};{};{};{};{};{};\n'.format(euc_dist1, com_t[0], len(rider.LP1History), obj[0], euc_dist2, com_t[1], len(rider.LP2History),obj[1],euc_dist3)
+    euc_dist4 = round(math.sqrt((rider.LP3p_coeff[0] - rider.coeff[0]) ** 2 + (rider.LP3p_coeff[1] - rider.coeff[1]) ** 2 + (rider.LP3p_coeff[2] - rider.coeff[2]) ** 2), 4)
+    euc_dist5 = round(math.sqrt((rider.LP3p_coeff[0] - rider.LP1p_coeff[0]) ** 2 + (rider.LP3p_coeff[1] - rider.LP1p_coeff[1]) ** 2 + (rider.LP3p_coeff[2] - rider.LP1p_coeff[2]) ** 2), 4)
+
+    f2_content = ';{};{};{};{};{};{};{};{};{};{};{};{};{};{};\n'.format(euc_dist1, com_t[0], len(rider.LP1History), obj[0], euc_dist2, com_t[1], len(rider.LP2History),obj[1],euc_dist3,
+                                                         euc_dist4,com_t[2], len(rider.LP3History),obj[2], euc_dist5)
     f2.write(f2_content)
 f.close()
 f2.close()

@@ -23,12 +23,11 @@ for beta in betas:
             input_instances = InstanceGen(unit_dist=unit_dist, std=std_input, max_x=max_x, max_y=max_y, gen_n=10000)
             for ite in range(100):
                 for LP_type in LP_types:
-                    #exec(open('ValueRevise_Run.py', encoding='UTF8').read(),
-                    #     globals().update(type_num=type_num, std=std_input, LP_type=LP_type, beta=beta, input_para=input_para, input_instances = input_instances, rider_coeff = coeff))
-                    exec(open('Combine_Run.py', encoding='UTF8').read(),
-                         globals().update(type_num=type_num, std=std_input, LP_type=LP_type, beta=beta,
-                                          input_para=input_para, input_instances=input_instances, rider_coeff=coeff, re_new_type = re_new_type))
-
+                    exec(open('ValueRevise_Run.py', encoding='UTF8').read(),
+                         globals().update(type_num=type_num, std=std_input, LP_type=LP_type, beta=beta, input_para=input_para, input_instances = input_instances, rider_coeff = coeff))
+                    #exec(open('Combine_Run.py', encoding='UTF8').read(),
+                    #     globals().update(type_num=type_num, std=std_input, LP_type=LP_type, beta=beta,
+                    #                      input_para=input_para, input_instances=input_instances, rider_coeff=coeff, re_new_type = re_new_type))
                     #input('실행 끝')
                     print(std_input, type_num, beta)
-                input('check')
+                #input('check')
