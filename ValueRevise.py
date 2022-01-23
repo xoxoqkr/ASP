@@ -322,6 +322,7 @@ def SystemRunner(env, rider_set, customer_set, cool_time, ox_table ,interval=10,
                     selected, others = InputCalculate2(rider, customer_set)  # 실제 라이더가 선택한 고객의 [-dist_cost, -type_cost, fee]
                     indexs = list(range(len(rider.choice_info) - 1))
                     indexs.reverse()
+                    rider.validations[3] += 1
                     #if #LP_type == 'LP1':
                     #LP1블럭
                     """
@@ -343,6 +344,8 @@ def SystemRunner(env, rider_set, customer_set, cool_time, ox_table ,interval=10,
                         if LP1_selected_value < np.dot(rider.LP1p_coeff,other_info[:len(rider.LP1p_coeff)]):
                             LP1_satisfy = False
                             break
+                        else:
+                            rider.validations[0] += 1
                     if LP1_satisfy == True:
                         LP1feasibility = False
                     else:
@@ -363,6 +366,8 @@ def SystemRunner(env, rider_set, customer_set, cool_time, ox_table ,interval=10,
                             rider.violated_choice_info.append(copy.deepcopy(len(rider.choice_info)))
                             LP2_satisfy = False
                             break
+                        else:
+                            rider.validations[1] += 1
                     if LP2_satisfy == True:
                         LP2feasibility = False
                     else:
@@ -391,16 +396,18 @@ def SystemRunner(env, rider_set, customer_set, cool_time, ox_table ,interval=10,
                         if LP3_selected_value < np.dot(rider.LP3p_coeff,other_info[:len(rider.LP3p_coeff)]):
                             LP3_satisfy = False
                             break
+                        else:
+                            rider.validations[2] += 1
                     if LP3_satisfy == True:
                         LP3feasibility = False
                     else:
                         for index1 in indexs:
                             past_select, past_others = InputCalculate2(rider, customer_set, index=index1,
-                                                                       LP_type='LP1')  # 실제 라이더가 선택할 시점의 [-dist_cost, -type_cost, fee]
+                                                                       LP_type='LP3')  # 실제 라이더가 선택할 시점의 [-dist_cost, -type_cost, fee]
                             if len(past_others) > 0:
                                 LP3past_choices.append([past_select, past_others])
-                        LP3feasibility, LP3res, LP3exe_t, LP3_obj = lpg.ReviseCoeffAP3(selected, others, rider.LP1p_coeff,
-                                                                              past_data=LP1past_choices,
+                        LP3feasibility, LP3res, LP3exe_t, LP3_obj = lpg.ReviseCoeffAP3(selected, others, rider.LP3p_coeff,
+                                                                              past_data=LP3past_choices,
                                                                               weight_sum=weight_sum)
                     if LP1feasibility == True:
                         LP1revise_value = 0
