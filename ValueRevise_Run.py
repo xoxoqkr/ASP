@@ -15,7 +15,7 @@ global beta
 global input_para
 global input_instances
 global rider_coeff
-
+global incentive_time_ratio
 
 ExpectedCustomerPreference = []
 inc = int(1000/type_num)
@@ -35,15 +35,16 @@ rider_intervals = InstanceGen_class.RiderGenInterval('데이터/interval_rider_d
 driver_error_pool = np.random.normal(500, 50, size=100)
 customer_lamda = None
 add_fee = 1500
-driver_left_time = 800
+driver_left_time = 1000
 driver_make_time = 200
 steps = [[]]
 driver_num = 1
 weight_sum = True
 revise_para = True
 ###Running
-run_time = 10000
-
+run_time = 1000
+validation_t = 0.7*driver_left_time
+incentive_time = incentive_time_ratio * driver_left_time
 ox_table = [0,0,0,0]
 subsidy_offer = []
 subsidy_offer_count = [0] * int(math.ceil(run_time / 60))  # [0]* (run_time//60) #[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
@@ -57,7 +58,7 @@ env.process(InstanceGen_class.DriverMaker(env, RIDER_DICT, CUSTOMER_DICT, end_ti
                                           driver_left_time = driver_left_time, num_gen= driver_num,ExpectedCustomerPreference=ExpectedCustomerPreference,rider_coeff=rider_coeff))
 env.process(InstanceGen_class.CustomerGeneratorForIP(env, CUSTOMER_DICT, data_dir + '.txt', input_fee=fee, input_loc= input_para,
                                                      type_num = type_num, std = std, input_instances= input_instances))
-env.process(ValueRevise.SystemRunner(env, RIDER_DICT, CUSTOMER_DICT, run_time, ox_table, weight_sum = weight_sum, revise = revise_para, beta = beta, LP_type = LP_type))
+env.process(ValueRevise.SystemRunner(env, RIDER_DICT, CUSTOMER_DICT, run_time, ox_table, weight_sum = weight_sum, revise = revise_para, beta = beta, LP_type = LP_type, validation_t = validation_t,incentive_time = incentive_time))
 env.run(until=run_time)
 
 #Save_result
@@ -67,7 +68,7 @@ f.write('저장 {} \n'.format('test'))
 f2 = open("결과저장1209_보조금_정리.txt", 'a')
 f2.write('저장 {} \n'.format('test1'))
 f2.write('고객종류;{};거리 std;{};LP종류;{};beta;{};\n'.format(type_num,std, LP_type,beta))
-f2.write(';LP1;연산시간;연산횟수;obj합;LP2;연산시간;연산횟수;obj합;LP1과의 차;LP3;연산시간;연산횟수;obj합;LP1과의 차\n')
+f2.write(';LP1;연산시간;연산횟수;obj합;LP2;연산시간;연산횟수;obj합;LP1과의 차;LP3;연산시간;연산횟수;obj합;LP1과의 차; LP1_v; LP2_v; LP3_v; 총 데이터수;o1;o2;o3;11;12;13;21;22;23;31;32;33;지급보조금;\n')
 
 for rider_name in RIDER_DICT:
     rider = RIDER_DICT[rider_name]
@@ -110,8 +111,10 @@ for rider_name in RIDER_DICT:
     euc_dist4 = round(math.sqrt((rider.LP3p_coeff[0] - rider.coeff[0]) ** 2 + (rider.LP3p_coeff[1] - rider.coeff[1]) ** 2 + (rider.LP3p_coeff[2] - rider.coeff[2]) ** 2), 4)
     euc_dist5 = round(math.sqrt((rider.LP3p_coeff[0] - rider.LP1p_coeff[0]) ** 2 + (rider.LP3p_coeff[1] - rider.LP1p_coeff[1]) ** 2 + (rider.LP3p_coeff[2] - rider.LP1p_coeff[2]) ** 2), 4)
 
-    f2_content = ';{};{};{};{};{};{};{};{};{};{};{};{};{};{};\n'.format(euc_dist1, com_t[0], len(rider.LP1History), obj[0], euc_dist2, com_t[1], len(rider.LP2History),obj[1],euc_dist3,
-                                                         euc_dist4,com_t[2], len(rider.LP3History),obj[2], euc_dist5)
+    f2_content = ';{};{};{};{};{};{};{};{};{};{};{};{};{};{};{};{};{};{};'.format(euc_dist1, com_t[0], len(rider.LP1History), obj[0], euc_dist2, com_t[1], len(rider.LP2History),obj[1],euc_dist3,
+                                                         euc_dist4,com_t[2], len(rider.LP3History),obj[2], euc_dist5, rider.validations[0],rider.validations[1],rider.validations[2],rider.validations[3])
+    f2_content += '{};{};{};{};{};{};{};{};{};{};{};{};{}; \n'.format(rider.coeff[0],rider.coeff[1],rider.coeff[2],rider.LP1p_coeff[0],rider.LP1p_coeff[1],rider.LP1p_coeff[2],rider.LP2p_coeff[0],rider.LP2p_coeff[1],rider.LP2p_coeff[2],rider.LP3p_coeff[0],rider.LP3p_coeff[1],rider.LP3p_coeff[2],
+                                                                      int(sum(rider.earn_fee)))
     f2.write(f2_content)
 f.close()
 f2.close()

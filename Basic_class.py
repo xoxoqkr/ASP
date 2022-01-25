@@ -120,7 +120,7 @@ class Rider(object):
         self.LP3History = []
         self.LP3_2History = []
         self.LP1p_coeff = [1,1,1]
-        self.LP2p_coeff = [1, 1, 1]
+        self.LP2p_coeff = self.coeff #[1, 1, 1]
         self.LP3p_coeff = [1,1,1]
         self.LP3_2p_coeff = [1,1,1]
         self.validations = [0,0,0,0]
@@ -256,13 +256,16 @@ class Rider(object):
                                     for index in range(len(res)):
                                         self.p_coeff[index] += res[index]
                                     print('갱신됨::{}'.format(self.p_coeff))
-                    print('고객 이름{}'.format(self.now_ct))
                     self.choice.append([ct_name, round(env.now,4)])
                     ct = customer_set[ct_name]
                     self.now_ct = ct.location
                     self.earn_fee.append(ct.fee[1])
+                    if ct.fee[1] > 0:
+                        #input('고객{} 보조금{}'.format(ct.name, ct.fee))
+                        pass
                     ct.assigned = True
                     ct.time_info[1] = round(env.now, 2)
+                    #input('고객 이름{}; 고객 {} ;보조금 정보 {}; 시간 정보{}'.format(self.now_ct, ct.name, ct.fee, ct.time_info))
                     end_time = env.now + (distance(self.last_location, ct.location[0]) / self.speed) + ct.time_info[6]
                     end_time += ((distance(ct.location[0], ct.location[1]) / self.speed) + ct.time_info[7])
                     if int(env.now // 60) >= len(self.fee_analyze):
@@ -394,6 +397,7 @@ def PriorityOrdering(veh, customers, minus_para = False, toCenter = True, who = 
     :return:[[고객 이름, 이윤],...] -> 이윤에 대한 내림차순으로 정렬됨.
     """
     res = []
+    incentive_list = []
     for customer in customers:
         time_para, cost, time = CheckTimeFeasiblity(veh, customer, customers, toCenter = toCenter, rider_route_cal_type = rider_route_cal_type, last_location = last_location, who = who)
         fee = customer.fee[0]
@@ -404,24 +408,30 @@ def PriorityOrdering(veh, customers, minus_para = False, toCenter = True, who = 
             fee += customer.fee[1]
             paid += customer.fee[1]
             save_fee += customer.fee[1]
+            if customer.fee[1] > 0:
+                incentive_list.append([customer.name, customer.fee[1]])
         cost2 = 0
         if who == 'platform':
             cost2 = veh.error
         elif who == 'test_rider':
-            fee = customer.fee[0]* veh.coeff[2]
+            fee = fee* veh.coeff[2]
             cost2 = veh.expect[customer.type] * veh.coeff[1]
             cost = cost*veh.coeff[0]
         elif who == 'test_platform':
             if LP_type == 'LP1':
-                fee = customer.fee[0] * veh.LP1p_coeff[2]
+                fee = fee * veh.LP1p_coeff[2]
                 cost2 = veh.expect[customer.type] * veh.LP1p_coeff[1]
                 cost = cost*veh.LP1p_coeff[0]
             elif LP_type == 'LP2':
-                fee = customer.fee[0] * veh.LP2p_coeff[2]
+                fee = fee * veh.LP2p_coeff[2]
                 cost2 = veh.expect[customer.type] * veh.LP2p_coeff[1]
                 cost = cost*veh.LP2p_coeff[0]
+            elif LP_type == 'LP3':
+                fee = fee * veh.LP3p_coeff[2]
+                cost2 = veh.expect[customer.type] * veh.LP3p_coeff[1]
+                cost = cost*veh.LP3p_coeff[0]
             else:
-                fee = customer.fee[0] * veh.p_coeff[2]
+                fee = fee * veh.p_coeff[2]
                 cost2 = veh.expect[customer.type] * veh.p_coeff[1]
                 cost = cost*veh.p_coeff[0]
 
@@ -445,6 +455,9 @@ def PriorityOrdering(veh, customers, minus_para = False, toCenter = True, who = 
     if len(res) > 0:
         if sort_para == True:
             res.sort(key=operator.itemgetter(1), reverse = True)
+    if len(incentive_list) > 0:
+        print('선택 정보 {} '.format(res))
+        #input('라이더 선택시 인센 정보 {}'.format(incentive_list))
     return res
 
 

@@ -500,7 +500,7 @@ def ReviseCoeffAP3(selected, others, org_coeff, past_data = [], Big_M = 100000, 
         m.addConstrs((w[i] >= 0 for i in coeff_indexs), name = 'c3')
         m.addConstr((gp.quicksum((w[i] ) for i in coeff_indexs) == 3), name = 'c4')
     #이번 selected와 other에 대한 문제 풀이
-    m.addConstr((gp.quicksum((w[i])*selected[i]*weight_direction[i] for i in coeff_indexs) + y[dummy_index,error_term_index] >= 0), name = 'c5')
+    m.addConstr((gp.quicksum((w[i])*selected[i]*weight_direction[i] for i in coeff_indexs)  >= 0), name = 'c5')
     error_term_index += 1
     Constr_count = 0
     for other_info in others:
@@ -519,7 +519,7 @@ def ReviseCoeffAP3(selected, others, org_coeff, past_data = [], Big_M = 100000, 
             #print('p_selected',p_selected)
             #print('p_others',p_others)
             error_term_index = 0
-            m.addConstr(gp.quicksum((w[i]) * p_selected[i] * weight_direction[i] for i in coeff_indexs) + y[dummy_index,error_term_index] >= 0, name = 'c7-'+ str(data_index) )
+            m.addConstr(gp.quicksum((w[i]) * p_selected[i] * weight_direction[i] for i in coeff_indexs)  >= 0, name = 'c7-'+ str(data_index) )
             error_term_index += 1
             for p_other_info in p_others:
                 #print('p_other_info',p_other_info)

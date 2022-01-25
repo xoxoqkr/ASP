@@ -25,14 +25,14 @@ upper = 1500 #보조금 상한 지급액
 checker = False
 print_para = True
 #1 라이더 관련 파라메터
-speed = 2
-wagePerHr = 9000
-driver_left_time = 100
+speed = 1
+wagePerHr = 9500
+driver_left_time = 120
 toCenter = False
 std_para = False
 value_cal_type = 'no_return' #라이더가 주문의 가치를 계산하는 방법. 돌아오는 지점까지 계산하는지 여부
 rider_start_point = [26,26]#[36,36]
-driver_num = 80
+driver_num = 120
 #2 플랫폼 파라메터
 dummy_customer_para = False #라이더가 고객을 선택하지 않는 경우의 input을 추가 하는가?
 coeff_revise_option = False #True : 플랫폼이 파라메터 갱신 시도/ False : 파라메터 갱신 시도 X
@@ -57,12 +57,12 @@ customer_wait_time = 80
 fee = None #Basic.distance(store_loc, customer_loc)*120 + 3500 -> 이동거리*120 + 기본료(3500)
 #4 시나리오 파라메터.
 Problem_states = []
-ITER_NUM_list =[0,0,0]
+ITER_NUM_list =[0]
 mean_list = [0,0,0]
 std_list = [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9]
 #data_dir = '데이터/new_data_1' # new_data_1' ##'new_data_2_RandomCluster' ###'new_data_2_Random
-datas = [[data_dir, False,'subsidy']]
-#datas = [[data_dir, False,'subsidy'],[data_dir, True,'normal']] #False의 경우 보조금을 지급하는 경우, #True의 경우는 보조금을 지급하지 않는 경우
+#datas = [[data_dir, False,'subsidy']]
+datas = [[data_dir, False,'subsidy'],[data_dir, True,'normal']] #False의 경우 보조금을 지급하는 경우, #True의 경우는 보조금을 지급하지 않는 경우
 
 
 
