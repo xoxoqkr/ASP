@@ -96,6 +96,71 @@ def CustomerGeneratorForIP(env, customer_dict, dir=None, end_time=1000,  custome
             break
 
 
+def CustomerGeneratorForNPYData(env, customer_dict, store_loc_data, customer_loc_data,harversion_dist_data,shortestpath_dist_data,gen_numbers,
+                                fee_type = 'harversion',end_time=1000,  basic_fee = 2500,customer_wait_time = 40, lamda = None, type_num = 4):
+    """
+    주어진 입력 값에 대한 고객을 생성. 아래 요인들이 중요
+    -배송비 책정
+    -고객 생성 간격
+    -고객 위치 분포
+
+    :param env: simpy Environment
+    :param customer_dict: 고객 dict <- 생성된 고객이 저장되는 dict
+    :param dir: 고객 데이터 저장 위치
+    :param end_time: 고객 생성 종료 시점
+    :param customer_wait_time: 고객의 주문 발생 후 기다리는 시간. 이 시간 동안 서비스를 받지 못한 고객은 주문을 철회
+    :param fee: 배송 요금(fee == None인 경우에는 거리에 대한 계단형 방식-FeeCalculator-으로 요금 계산)
+    :param lamda: 고객 생성 간격
+    :param add_fee: 추가 요금
+    :param basic_fee: 기본 요금
+    :param steps: 거리에 비례해 계산되는 요금을 계산하기 위한 거리별 요금 정보
+    """
+    ordered_customer_names = []
+    for num in range(1,gen_numbers):
+        store_name = random.choice(range(store_loc_data))
+        count = 0
+        while count < 1000:
+            customer_name = random.choice(range(customer_loc_data))
+            count += 1
+            if customer_name not in ordered_customer_names:
+                break
+        ordered_customer_names.append(customer_name)
+        store_loc = store_loc_data[store_name][2]
+        customer_loc = customer_loc_data[customer_name][2]
+        if fee_type == 'shortest_path':
+            ODdist = harversion_dist_data[store_name,customer_name]
+        else:
+            ODdist = shortestpath_dist_data[store_name,customer_name]
+        fee = round((ODdist / 10) * 100, 2) + basic_fee  # 2500
+        far_para = 0
+        if ODdist >= 3:
+            far_para = 1
+        c = Basic.Customer(env, num, input_location=[store_loc, customer_loc], fee=fee,
+                           end_time=customer_wait_time, far=far_para, type_num=random.choice(range(type_num)))
+        customer_dict[num] = c
+        if lamda == None:
+            yield env.timeout(3)
+        else:
+            try:
+                yield env.timeout(Basic.NextMin(lamda))
+            except:
+                print("lamda require type int+ or float+")
+                yield env.timeout(4)
+        if env.now > end_time:
+            break
+
+def LocDataTransformer(dir, index = 0):
+    res = []
+    datas = open(dir, 'r')
+    lines = datas.readlines()
+    for line in lines[2:]:
+        data = line.split(';')[:3]
+        info = [index, int(data[1]), [float(data[2][1:len(data[2])-1].split(',')[0]),float(data[2][1:len(data[2])-1].split(',')[1])], int(data[3])]
+        res.append(info)
+        index += 1
+    datas.close()
+    return res
+
 
 def DriverMaker(env, driver_dict, customer_set ,speed = 2, end_time = 800, intervals = [], interval_para = False, interval_res = [],
                 toCenter = True, error = 0, run_time = 900, pref_info = None, driver_left_time = 120, print_para = False,

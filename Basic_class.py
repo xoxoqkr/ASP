@@ -106,9 +106,9 @@ class Rider(object):
         random.shuffle(pref)
         self.CustomerPreference = pref
         self.expect = ExpectedCustomerPreference
-        cost_coeff = round(random.uniform(0.3,1.0),1)
-        type_coeff = 3 - (1.5 + cost_coeff) #round(random.uniform(0.8,1.2),1)
-        self.coeff = [cost_coeff,type_coeff,1.5] #[cost_coeff,type_coeff,1] #[1,1,1]
+        cost_coeff = round(random.uniform(0.2,0.45),2)#round(random.uniform(0.3,1.0),1)
+        type_coeff = 0.6 - cost_coeff#3 - (1.5 + cost_coeff) #round(random.uniform(0.8,1.2),1)
+        self.coeff = [cost_coeff,type_coeff,0.4]#[cost_coeff,type_coeff,1.5] #[cost_coeff,type_coeff,1] #[1,1,1]
         self.p_coeff = [1,1,1] #[0.9,0.4,0.8] #[1,1,1]#[거리, 타입, 수수료]
         self.past_route = []
         self.past_route_info = []
@@ -119,11 +119,13 @@ class Rider(object):
         self.LP2History = []
         self.LP3History = []
         self.LP3_2History = []
-        self.LP1p_coeff = [1,1,1]
-        self.LP2p_coeff = self.coeff #[1, 1, 1]
-        self.LP3p_coeff = [1,1,1]
+        self.LP1p_coeff = [0,0,0] #[1,1,1]
+        self.LP2p_coeff = [0,0,0] #[1,1,1]
+        self.LP3p_coeff = [0,0,0] #[1,1,1]
         self.LP3_2p_coeff = [1,1,1]
         self.validations = [0,0,0,0]
+        self.validations_detail = [[],[],[],[]]
+        self.validations_detail_abs = [[], [], [], []]
         env.process(self.Runner(env, customer_set, toCenter = toCenter, pref = pref_info, save_info = save_info, print_para = print_para,coeff_revise_option = coeff_revise_option, weight_sum= weight_sum))
         env.process(self.RiderLeft(left_time))
 
@@ -584,14 +586,18 @@ def WhoGetPriority(customers , cut, now_time, time_thres = 0.8, print_para = Fal
     return [], []
 
 
-def distance(p1, p2):
+def distance(p1, p2, data = None):
     """
     두 지점 사이의 거리를 반환
     :param p1: [x,y]
     :param p2: [x,y]
     :return: 거리
     """
-    return round(math.sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2), 2)
+    if type(p1) == list and type(p2) == list:
+        res = round(math.sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2), 2)
+    else:
+        res = data[p1,p2]*1000
+    return res
 
 
 def NextMin(lamda):

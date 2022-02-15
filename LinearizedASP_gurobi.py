@@ -311,7 +311,7 @@ def ReviseCoeffAP1(selected, others, org_coeff, past_data = [], Big_M = 1000, we
     #계수 합 관련
     if weight_sum == True:
         m.addConstrs((w[i]  >= 0 for i in coeff_indexs), name = 'c3')
-        m.addConstr((gp.quicksum((w[i]) for i in coeff_indexs) == 3), name = 'c4')
+        m.addConstr((gp.quicksum((w[i]) for i in coeff_indexs) == 1), name = 'c4')
     #이번 selected와 other에 대한 문제 풀이
     m.addConstr((gp.quicksum((w[i] )*selected[i]*weight_direction[i] for i in coeff_indexs) + y[dummy_index,error_term_index] >= 0), name = 'c5')
     error_term_index += 1
@@ -342,6 +342,8 @@ def ReviseCoeffAP1(selected, others, org_coeff, past_data = [], Big_M = 1000, we
             data_index += 1
     #풀이
     m.Params.method = 2
+    #m.Params.Method = 2  # barrier
+    #m.Params.Crossover = 0  # no crossover
     m.optimize()
     exe_t = m.Runtime
     #print(m.display())
@@ -405,7 +407,7 @@ def ReviseCoeffAP2(selected, others, org_coeff, past_data = [], Big_M = 1000, we
     #계수 합 관련
     if weight_sum == True:
         m.addConstrs((w[i] + org_coeff[i] >= 0 for i in coeff_indexs), name = 'c3')
-        m.addConstr((gp.quicksum((w[i] + org_coeff[i]) for i in coeff_indexs) == 3), name = 'c4')
+        m.addConstr((gp.quicksum((w[i] + org_coeff[i]) for i in coeff_indexs) == 1), name = 'c4')
     #이번 selected와 other에 대한 문제 풀이
     m.addConstr((gp.quicksum((w[i] + org_coeff[i])*selected[i]*weight_direction[i] for i in coeff_indexs) + y[dummy_index,error_term_index] >= 0), name = 'c5')
     error_term_index += 1
@@ -498,7 +500,7 @@ def ReviseCoeffAP3(selected, others, org_coeff, past_data = [], Big_M = 100000, 
     #계수 합 관련
     if weight_sum == True:
         m.addConstrs((w[i] >= 0 for i in coeff_indexs), name = 'c3')
-        m.addConstr((gp.quicksum((w[i] ) for i in coeff_indexs) == 3), name = 'c4')
+        m.addConstr((gp.quicksum((w[i] ) for i in coeff_indexs) == 1), name = 'c4')
     #이번 selected와 other에 대한 문제 풀이
     m.addConstr((gp.quicksum((w[i])*selected[i]*weight_direction[i] for i in coeff_indexs)  >= 0), name = 'c5')
     error_term_index += 1
@@ -543,6 +545,106 @@ def ReviseCoeffAP3(selected, others, org_coeff, past_data = [], Big_M = 100000, 
     #input('모형 확인')
     try:
         print('Obj val: %g' % m.objVal)
+        #print(w)
+        #print(z)
+        res = []
+        for val in m.getVars():
+            if val.VarName[0] == 'w':
+                res.append(float(val.x))
+            elif val.VarName[0] == 'y':
+                obj.append(float(val.x))
+                if int(val.x) != Big_M:
+                    revise_obj.append(val.x)
+            else:
+                pass
+        return True, res, exe_t, sum(revise_obj)
+    except:
+        print('Infeasible')
+        return False, None, exe_t, 0
+
+
+def ReviseCoeffAP3_WIP(selected, others, org_coeff, past_data = [], Big_M = 100000, weight_sum = False):
+    """
+    라이더의 가치함수 갱신 문제=> LP2
+    :param selected: #선택된 주문 1개의 요소들 [x11,x12,x13]
+    :param others: #선택되지 않은 주문들의 요소들 [[x11,x12,x13],[x21,x22,x23],...,[]]
+    :param org_coeff:현재 coeff
+    :param past_data: 과거 선택들
+    :return:
+    """
+    weight_direction = [1,1,1]
+    coeff_indexs = list(range(len(org_coeff)))
+    dummy_indexs = list(range(1 + len(past_data)))
+    max_data_size_infos = [1 + len(others)]
+    for info in past_data:
+        max_data_size_infos.append(1 + len(info[1]))
+    max_data_size = max(max_data_size_infos)
+    error_term_indexs = list(range(max_data_size))
+    zero_y_indexs = [] #정의되지 않는 y에 대해 0 값을 만들기
+    info_count = 0
+    for info in past_data:
+        size_diff = max_data_size - (1 + len(info[1]))
+        if size_diff > 0:
+            for index in range((1 + len(info[1])),max_data_size):
+                zero_y_indexs.append([info_count, index])
+        info_count += 1
+    # D.V. and model set.
+    m = gp.Model("mip1")
+    w = m.addVars(len(org_coeff), lb = -2, vtype=GRB.CONTINUOUS, name="w")
+    y = m.addVar(ub = Big_M, vtype = GRB.CONTINUOUS, name= "y")
+    #Objective Function
+    m.setObjective(y , GRB.MAXIMIZE)
+    dummy_index = 0
+    error_term_index = 0
+    #계수 합 관련
+    if weight_sum == True:
+        m.addConstrs((w[i] >= 0 for i in coeff_indexs), name = 'c3')
+        m.addConstr((gp.quicksum((w[i] ) for i in coeff_indexs) == 1), name = 'c4')
+    #이번 selected와 other에 대한 문제 풀이
+    m.addConstr((gp.quicksum((w[i])*selected[i]*weight_direction[i] for i in coeff_indexs)  >= 0), name = 'c5')
+    error_term_index += 1
+    Constr_count = 0
+    for other_info in others:
+        #print('compare',selected,other_info)
+        m.addConstr(gp.quicksum((w[i])*selected[i]*weight_direction[i] for i in coeff_indexs) >=
+                    gp.quicksum((w[j])*other_info[j]*weight_direction[j] for j in coeff_indexs) + y, name = 'c6-'+str(Constr_count))
+        error_term_index += 1
+        Constr_count += 1
+    dummy_index += 1
+    #과거 정보를 적층하는 작업
+    if len(past_data) > 0:
+        data_index = 0
+        for data in past_data:
+            p_selected = data[0]
+            p_others = data[1]
+            #print('p_selected',p_selected)
+            #print('p_others',p_others)
+            error_term_index = 0
+            m.addConstr(gp.quicksum((w[i]) * p_selected[i] * weight_direction[i] for i in coeff_indexs)  >= 0, name = 'c7-'+ str(data_index) )
+            error_term_index += 1
+            for p_other_info in p_others:
+                #print('p_other_info',p_other_info)
+                m.addConstr(gp.quicksum((w[i])*p_selected[i] * weight_direction[i] for i in coeff_indexs) >=
+                           gp.quicksum((w[j])*p_other_info[j] * weight_direction[j] for j in coeff_indexs) + y, name = 'c8-'+str(data_index) + '-'+str(error_term_index-1))
+                error_term_index += 1
+            dummy_index += 1
+            data_index += 1
+    #제약식이 존재하지 않는 zero_y_indexs의 값을 0으로 하기.
+    #for zero_index in zero_y_indexs:
+    #    m.addConstr(y[zero_index[0], zero_index[1]] == 0)
+    #풀이
+    m.Params.method = 2
+    m.optimize()
+    exe_t = m.Runtime
+    #print(m.display())
+    #print(m.getVars())
+    m.write("test_file.lp")
+    obj = []
+    revise_obj = []
+    #input('모형 확인')
+    try:
+        print('Obj val: %g' % m.objVal)
+        #input('LP3확인')
         #print(w)
         #print(z)
         res = []
