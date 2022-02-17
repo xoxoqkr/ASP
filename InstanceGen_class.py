@@ -75,14 +75,16 @@ def CustomerGeneratorForIP(env, customer_dict, dir=None, end_time=1000,  custome
         if input_fee == None:
             #distance = int(Basic.distance(store_loc, customer_loc))
             #fee = FeeCalculator(distance, steps) + basic_fee #기본 수수료(basic_fee)에 거리마다 계단 형으로 추가 요금이 발생하는 요금제
-            fee = round((Basic.distance(store_loc, customer_loc) / 10) * 100,2) + 2500  # 2500
+            fee = round((Basic.distance(store_loc, customer_loc) / 10) * 100,2) + 3500  # 2500
         else:
             fee = fee
+        #input('고객 {} 수수료 {}'.format(int(data[0]),fee))
         if input_loc != False:
             store_loc = coordinates[int(data[0])][0]
             customer_loc = coordinates[int(data[0])][1]
         c = Basic.Customer(env, int(data[0]), input_location = [store_loc, customer_loc], fee= fee, end_time= customer_wait_time, far = int(data[6]),type_num = type_num)
         customer_dict[int(data[0])] = c
+
         #print('Time',round(env.now,2) ,'CT#', c.name, 'gen')
         if lamda == None:
             yield env.timeout(float(data[7]))
@@ -154,7 +156,7 @@ def DriverMaker(env, driver_dict, customer_set ,speed = 2, end_time = 800, inter
             next_time = intervals[name]
         name += 1
         print('T {} rider {} Gen'.format(env.now,rider.name) )
-        yield env.timeout(next_time)
+        yield env.timeout(2*next_time)
 
 
 def RiderGenInterval(dir, lamda = None):

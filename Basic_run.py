@@ -16,7 +16,7 @@ import copy
 global data_dir
 #필요한 인스턴스 생성
 #0 시뮬레이션 환경 파라메터
-run_time = 900
+run_time = 100
 solver_running_interval = 10
 insert_thres = 30
 add_para = True

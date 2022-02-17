@@ -40,6 +40,7 @@ class Customer(object):
         self.far = far
         self.error = 0
         self.type = random.choice(list(range(type_num))) #[0,1,2,3]#random.randrange(1,end_type) #random.randrange(1,end_type)
+        self.considered = False
         env.process(self.Decline(env))
 
     def Decline(self, env, slack = 10):
@@ -106,10 +107,10 @@ class Rider(object):
         random.shuffle(pref)
         self.CustomerPreference = pref
         self.expect = ExpectedCustomerPreference
-        cost_coeff = round(random.uniform(0.3,1.0),1)
-        type_coeff = 3 - (1.5 + cost_coeff) #round(random.uniform(0.8,1.2),1)
-        self.coeff = [cost_coeff,type_coeff,1.5] #[cost_coeff,type_coeff,1] #[1,1,1]
-        self.p_coeff = [1,1,1] #[0.9,0.4,0.8] #[1,1,1]#[거리, 타입, 수수료]
+        cost_coeff = round(random.uniform(0.2,0.45),2) #round(random.uniform(0.3,1.0),1)
+        type_coeff = 0.6 - cost_coeff # 3 - (1.5 + cost_coeff) #round(random.uniform(0.8,1.2),1)
+        self.coeff = [0.43,0.17,0.4] # [cost_coeff,type_coeff,0.4] # [cost_coeff,type_coeff,1.5] #[cost_coeff,type_coeff,1] #[1,1,1]
+        self.p_coeff = [0.215,0.088,0.695]#[cost_coeff,type_coeff,1.5] #[1,1,1] #[0.9,0.4,0.8] #[1,1,1]#[거리, 타입, 수수료]
         self.past_route = []
         self.past_route_info = []
         self.P_choice_info = []
@@ -119,9 +120,9 @@ class Rider(object):
         self.LP2History = []
         self.LP3History = []
         self.LP3_2History = []
-        self.LP1p_coeff = [1,1,1]
-        self.LP2p_coeff = self.coeff #[1, 1, 1]
-        self.LP3p_coeff = [1,1,1]
+        self.LP1p_coeff = [0,0,0]#[1,1,1]
+        self.LP2p_coeff = [1,1,1]#[0.215,0.088,0.695]#[1, 1, 1]
+        self.LP3p_coeff = [0,0,0] #[1,1,1]
         self.LP3_2p_coeff = [1,1,1]
         self.validations = [0,0,0,0]
         env.process(self.Runner(env, customer_set, toCenter = toCenter, pref = pref_info, save_info = save_info, print_para = print_para,coeff_revise_option = coeff_revise_option, weight_sum= weight_sum))
@@ -164,13 +165,15 @@ class Rider(object):
                 ava_cts_class = ava_cts
                 for info in ava_cts:
                     ava_cts_names.append(info.name)
+
         if len(ava_cts_class) > 0:
             print('라이더 선택 시점의 라이더 위치{}'.format(self.last_location))
             #print('고를 수 있는 고객 들 수',len(ava_cts_class))
-            print('T {} 라이더 선택 시점의 설정 {} {} {}'.format(self.env.now, toCenter, pref, value_cal_type))
+            print('T {} 라이더 {}선택 시점의 설정 {} {} {}'.format(self.env.now, self.name, toCenter, pref, value_cal_type))
             priority_orders = PriorityOrdering(self, ava_cts_class, toCenter = toCenter, who = pref, save_info = save_info, rider_route_cal_type = value_cal_type)
             priority_orders_biggerthan1 = []
             for info in priority_orders:
+                customer_set[info[0]].considered = True
                 if info[1] > 0:
                     priority_orders_biggerthan1.append(info)
             try:
@@ -219,11 +222,11 @@ class Rider(object):
                     for info in infos:
                         rev_infos.append([info[0],info[2]])
                     """
-                    print('T:{}/ 라이더 {} 고객 없음'.format(int(env.now), self.name))
+                    #print('T:{}/ 라이더 {} 고객 {} 선택'.format(int(env.now), self.name,ct_name))
                     if pref == 'test_rider' or pref == 'test_platform':
                         #self.choice_info.append([int(env.now), ct_name, self.last_location , rev_infos])
-                        self.choice_info.append([int(env.now), ct_name, self.last_location, infos])
-                        #print('선택 정보 저장 {}'.format())
+                        self.choice_info.append([round(env.now,4), ct_name, self.last_location, infos])
+                        print('라이더{} 고객 선택 {} T'.format(self.name, ct_name))
                 #print('Rider',self.name,'assign2',ct_name, 'at', env.now)
                 if infos == None:
                     pass
@@ -324,10 +327,10 @@ class Rider(object):
                 self.end_time = env.now + wait_time
                 self.idle_times[1].append(wait_time) #이미 수행하는 주문이 있는 경우
                 yield self.env.timeout(wait_time)
-                print('T:{}/ 라이더 {} 주문 없음으로 대기'.format(int(env.now), self.name))
+                print('T:{}/ 라이더 {} 주문 없음으로 대기 상태 {}'.format(int(env.now), self.name, self.wait))
 
 
-def UnloadedCustomer(customer_set, now_time):
+def UnloadedCustomer(customer_set, now_time, check_para = False):
     """
     고객들(customer_set) 중 아직 라이더에게 할당되지 않은 고객들 계산
     :param customer_set: 고객 dict [class customer, class customer,...,]
@@ -337,6 +340,8 @@ def UnloadedCustomer(customer_set, now_time):
     res = []
     for ct_name in customer_set:
         customer = customer_set[ct_name]
+        if check_para == True and customer.considered == True:
+            continue
         cond1 = now_time - customer.time_info[0] < customer.time_info[5]
         cond2 = customer.assigned == False and customer.loaded == False and customer.done == False
         cond3 = customer.wait == False

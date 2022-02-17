@@ -490,9 +490,11 @@ def ReviseCoeffAP3(selected, others, org_coeff, past_data = [], Big_M = 100000, 
     # D.V. and model set.
     m = gp.Model("mip1")
     w = m.addVars(len(org_coeff), lb = -2, vtype=GRB.CONTINUOUS, name="w")
-    y = m.addVars(1 + len(past_data), max_data_size, ub = Big_M, vtype = GRB.CONTINUOUS, name= "y")
+    y = m.addVar(ub=Big_M, vtype=GRB.CONTINUOUS, name="y")
+    #y = m.addVars(1 + len(past_data), max_data_size, ub = Big_M, vtype = GRB.CONTINUOUS, name= "y")
     #Objective Function
-    m.setObjective(gp.quicksum(y[i,j] for i in dummy_indexs for j in error_term_indexs) , GRB.MAXIMIZE)
+    m.setObjective(y, GRB.MAXIMIZE)
+    #m.setObjective(gp.quicksum(y[i,j] for i in dummy_indexs for j in error_term_indexs) , GRB.MAXIMIZE)
     dummy_index = 0
     error_term_index = 0
     #계수 합 관련
@@ -500,13 +502,13 @@ def ReviseCoeffAP3(selected, others, org_coeff, past_data = [], Big_M = 100000, 
         m.addConstrs((w[i] >= 0 for i in coeff_indexs), name = 'c3')
         m.addConstr((gp.quicksum((w[i] ) for i in coeff_indexs) == 3), name = 'c4')
     #이번 selected와 other에 대한 문제 풀이
-    m.addConstr((gp.quicksum((w[i])*selected[i]*weight_direction[i] for i in coeff_indexs)  >= 0), name = 'c5')
+    m.addConstr((gp.quicksum((w[i])*selected[i]*weight_direction[i] for i in coeff_indexs) >= 0), name = 'c5')
     error_term_index += 1
     Constr_count = 0
     for other_info in others:
         #print('compare',selected,other_info)
-        m.addConstr(gp.quicksum((w[i])*selected[i]*weight_direction[i] for i in coeff_indexs) ==
-                    gp.quicksum((w[j])*other_info[j]*weight_direction[j] for j in coeff_indexs) + y[dummy_index,error_term_index], name = 'c6-'+str(Constr_count))
+        m.addConstr(gp.quicksum((w[i])*selected[i]*weight_direction[i] for i in coeff_indexs) >=
+                    gp.quicksum((w[j])*other_info[j]*weight_direction[j] for j in coeff_indexs) + y , name = 'c6-'+str(Constr_count))
         error_term_index += 1
         Constr_count += 1
     dummy_index += 1
@@ -523,8 +525,8 @@ def ReviseCoeffAP3(selected, others, org_coeff, past_data = [], Big_M = 100000, 
             error_term_index += 1
             for p_other_info in p_others:
                 #print('p_other_info',p_other_info)
-                m.addConstr(gp.quicksum((w[i])*p_selected[i] * weight_direction[i] for i in coeff_indexs) ==
-                           gp.quicksum((w[j])*p_other_info[j] * weight_direction[j] for j in coeff_indexs)+ y[dummy_index,error_term_index], name = 'c8-'+str(data_index) + '-'+str(error_term_index-1))
+                m.addConstr(gp.quicksum((w[i])*p_selected[i] * weight_direction[i] for i in coeff_indexs) >=
+                           gp.quicksum((w[j])*p_other_info[j] * weight_direction[j] for j in coeff_indexs)+ y, name = 'c8-'+str(data_index) + '-'+str(error_term_index-1))
                 error_term_index += 1
             dummy_index += 1
             data_index += 1
@@ -537,7 +539,8 @@ def ReviseCoeffAP3(selected, others, org_coeff, past_data = [], Big_M = 100000, 
     exe_t = m.Runtime
     #print(m.display())
     #print(m.getVars())
-    m.write("test_file.lp")
+    ite = str(len(past_data))
+    m.write("LP3_file"+ite+".lp")
     obj = []
     revise_obj = []
     #input('모형 확인')

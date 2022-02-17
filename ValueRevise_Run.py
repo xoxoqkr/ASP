@@ -26,9 +26,9 @@ for _ in range(type_num):
 
 
 #파라메터
-speed = 2
+speed = 1
 toCenter = False
-customer_wait_time = 10000
+customer_wait_time = 5
 fee = None
 data_dir = '데이터/new_data_2_RandomCluster'
 rider_intervals = InstanceGen_class.RiderGenInterval('데이터/interval_rider_data3.csv')
@@ -42,7 +42,7 @@ driver_num = 1
 weight_sum = True
 revise_para = True
 ###Running
-run_time = 1000
+run_time = 300
 validation_t = 0.7*driver_left_time
 incentive_time = incentive_time_ratio * driver_left_time
 ox_table = [0,0,0,0]

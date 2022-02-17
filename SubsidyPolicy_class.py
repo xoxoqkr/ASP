@@ -95,6 +95,7 @@ def CalculateRiderOrder(rider_set, now_time):
                 d_orders_res.append(index)
                 break
             index += 1
+    print('종료시점',d_orders)
     print('d_orders_res',d_orders_res)
     #input('라이더 선택 순서 확인;{}'.format(d_orders))
     return d_orders_res
@@ -294,6 +295,7 @@ def SystemRunner(env, rider_set, customer_set, run_time, interval=10, No_subsidy
             print('IP 풀이O', env.now,'급한 고객 수:', len(urgent_cts),'급한고객',urgent_cts,'// 예상 매칭 고객 수:', expected_cts, '//라이더 순서', d_orders_res)
             print('가능한 라이더수:', len(rider_names), '//고객 수:', len(cts_name), '//No_subsidy:', No_subsidy)
             print('V_old', np.shape(v_old), '//Time:', np.shape(times), '//EndTime:', np.shape(end_times))
+            #input('풀이전 정보 확인')
             res, vars = lpg.LinearizedSubsidyProblem(rider_names, cts_name, v_old, d_orders_res, times, end_times,
                                                      lower_b=0, sp=urgent_cts, print_gurobi=False, upper_b=upper)
             print('문제 풀림')
@@ -316,7 +318,7 @@ def SystemRunner(env, rider_set, customer_set, run_time, interval=10, No_subsidy
                     print('Fee updater')
                     FeeUpdater(res2, customer_set, rider_names, rider_set, cts_name, env.now,
                                subsidy_offer=subsidy_offer, subsidy_offer_count=subsidy_offer_count, upper=upper)
-
+        ava_riders = Basic.AvaRider(rider_set, env.now)
         yield env.timeout(interval)
         # 보조금 초기화
         Basic.InitializeSubsidy(customer_set) # 보조금 초기화
@@ -328,14 +330,16 @@ def SystemRunner(env, rider_set, customer_set, run_time, interval=10, No_subsidy
             rider = rider_set[rider_name]
             try:
                 if env.now - interval <= rider.choice_info[-1][0] < env.now:
-                    test.append([rider.name, rider.choice_info[-1][0]])
+                    test.append([rider.name, rider.choice_info[-1][0], rider.choice_info[-1][:3]])
             except:
                 pass
         if len(test) > 0:
             test.sort(key=operator.itemgetter(1))
-            #print(d_orders_res)
-            #print('T {} 주문 선택 순서 확인 {}'.format(int(env.now), test))
-            #input('T {} 주문 선택 순서 확인 {}'.format(int(env.now), test))
+            print('주문선택 라이더',ava_riders)
+            print('순서',d_orders_res)
+            print('T {} 주문 선택 순서 확인 {}'.format(int(env.now), test))
+            #input('선택 결과 확인')
+        #input('test 확인')
         # updater
         """
         for rider_name in rider_set:
