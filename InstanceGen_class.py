@@ -117,26 +117,27 @@ def CustomerGeneratorForNPYData(env, customer_dict, store_loc_data, customer_loc
     """
     ordered_customer_names = []
     for num in range(1,gen_numbers):
-        store_name = random.choice(range(store_loc_data))
+        store_name = random.choice(range(len(store_loc_data)))
         count = 0
         while count < 1000:
-            customer_name = random.choice(range(customer_loc_data))
+            customer_name = random.choice(range(len(customer_loc_data)))
             count += 1
-            if customer_name not in ordered_customer_names:
+            if customer_name not in ordered_customer_names and harversion_dist_data[store_name,customer_name] > 0 and shortestpath_dist_data[store_name,customer_name] > 0:
                 break
         ordered_customer_names.append(customer_name)
-        store_loc = store_loc_data[store_name][2]
-        customer_loc = customer_loc_data[customer_name][2]
+        store_loc = store_loc_data[store_name][0]
+        customer_loc = customer_loc_data[customer_name][0]
         if fee_type == 'shortest_path':
             ODdist = harversion_dist_data[store_name,customer_name]
         else:
             ODdist = shortestpath_dist_data[store_name,customer_name]
-        fee = round((ODdist / 10) * 100, 2) + basic_fee  # 2500
+        fee = round((ODdist*10) * 100, 2) + basic_fee  # 2500 #ODdist 는 키로미터
+        input('거리{} 수수료{}'.format(ODdist,fee))
         far_para = 0
         if ODdist >= 3:
             far_para = 1
         c = Basic.Customer(env, num, input_location=[store_loc, customer_loc], fee=fee,
-                           end_time=customer_wait_time, far=far_para, type_num=random.choice(range(type_num)))
+                           end_time=customer_wait_time, far=far_para, type_num=type_num)
         customer_dict[num] = c
         if lamda == None:
             yield env.timeout(3)
@@ -154,7 +155,7 @@ def LocDataTransformer(dir, index = 0):
     datas = open(dir, 'r')
     lines = datas.readlines()
     for line in lines[2:]:
-        data = line.split(';')[:3]
+        data = line.split(';')[:4]
         info = [index, int(data[1]), [float(data[2][1:len(data[2])-1].split(',')[0]),float(data[2][1:len(data[2])-1].split(',')[1])], int(data[3])]
         res.append(info)
         index += 1

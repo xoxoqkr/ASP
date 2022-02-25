@@ -8,6 +8,12 @@ import simpy
 import math
 import operator
 import copy
+import numpy as np
+from ValueRevise import RiderWeightUpdater
+
+
+global shortest_path_data_np
+shortest_path_data_np = np.load('송파구_ShortestPath_Distance_data.npy')
 
 
 class Customer(object):
@@ -57,7 +63,7 @@ class Customer(object):
 class Rider(object):
     def __init__(self, env, name, speed, customer_set, wageForHr = 9000, wait = True, toCenter = True, run_time = 900, error = 0,
                  ExpectedCustomerPreference = [0,250,500,750], pref_info = 'None', save_info = False, left_time = 120, print_para = False,
-                 start_pos = [26,26], value_cal_type = 'return',coeff_revise_option = False, weight_sum = False):
+                 start_pos = [26,26], value_cal_type = 'return',coeff_revise_option = False, weight_sum = False, Data = None):
         """
         라이더 class
         :param env: simpy Environment
@@ -126,7 +132,8 @@ class Rider(object):
         self.validations = [0,0,0,0]
         self.validations_detail = [[],[],[],[]]
         self.validations_detail_abs = [[], [], [], []]
-        env.process(self.Runner(env, customer_set, toCenter = toCenter, pref = pref_info, save_info = save_info, print_para = print_para,coeff_revise_option = coeff_revise_option, weight_sum= weight_sum))
+        env.process(self.Runner(env, customer_set, toCenter = toCenter, pref = pref_info, save_info = save_info,
+                                print_para = print_para,coeff_revise_option = coeff_revise_option, weight_sum= weight_sum, Data= Data))
         env.process(self.RiderLeft(left_time))
 
 
@@ -196,7 +203,8 @@ class Rider(object):
         return None, None
 
 
-    def Runner(self, env, customer_set, wait_time=1, toCenter = True, pref = 'None', save_info = False, print_para = False, coeff_revise_option = False, weight_sum = False):
+    def Runner(self, env, customer_set, wait_time=1, toCenter = True, pref = 'None', save_info = False, print_para = False,
+               coeff_revise_option = False, weight_sum = False, Data = None):
         """
         라이더의 운행을 표현.
         if 수행할 주문이 있는 경우:
@@ -223,8 +231,11 @@ class Rider(object):
                     """
                     print('T:{}/ 라이더 {} 고객 없음'.format(int(env.now), self.name))
                     if pref == 'test_rider' or pref == 'test_platform':
+                        input('갱신 확인1')
                         #self.choice_info.append([int(env.now), ct_name, self.last_location , rev_infos])
                         self.choice_info.append([int(env.now), ct_name, self.last_location, infos])
+                        RiderWeightUpdater(self, customer_set, weight_sum = True, beta=1) #todo 220225 : 라이더가 선택후 각 방식에 의해 rider weighr 갱신 수행
+                        input('갱신 확인2')
                         #print('선택 정보 저장 {}'.format())
                 #print('Rider',self.name,'assign2',ct_name, 'at', env.now)
                 if infos == None:
@@ -268,7 +279,7 @@ class Rider(object):
                     ct.assigned = True
                     ct.time_info[1] = round(env.now, 2)
                     #input('고객 이름{}; 고객 {} ;보조금 정보 {}; 시간 정보{}'.format(self.now_ct, ct.name, ct.fee, ct.time_info))
-                    end_time = env.now + (distance(self.last_location, ct.location[0]) / self.speed) + ct.time_info[6]
+                    end_time = env.now + (distance(ct.location[0],self.last_location) / self.speed) + ct.time_info[6] #self.last_location == 고객, ct.location[0] = 가게
                     end_time += ((distance(ct.location[0], ct.location[1]) / self.speed) + ct.time_info[7])
                     if int(env.now // 60) >= len(self.fee_analyze):
                         print(env.now, self.fee_analyze)
@@ -288,7 +299,7 @@ class Rider(object):
                         #print(self.name, 'select', ct.name, 'Time:', env.now)
                         req.info = [ct.name, round(env.now,2)]
                         yield req  # users에 들어간 이후에 작동
-                        time = distance(self.last_location, ct.location[0]) / self.speed
+                        time = distance(ct.location[0],self.last_location) / self.speed
                         #print('With in 1:',self.last_location, '2:', ct.location[0])
                         time += ct.time_info[6]
                         #end_time += time
@@ -348,7 +359,7 @@ def UnloadedCustomer(customer_set, now_time):
             res.append(customer)
     return res
 
-def CheckTimeFeasiblity(veh, customer, customers, toCenter = True, rider_route_cal_type = 'return', last_location = None, who = 'driver'):
+def CheckTimeFeasiblity(veh, customer, customers, toCenter = True, rider_route_cal_type = 'return', last_location = None, who = 'driver',init_center = 1):
     """
     입력 받은 차량(veh)가 고객(customer)를 제한 시간 내에 방문할 수 있는지 여부(T/F)와 그 비용을 계산
     :param veh: class Rider
@@ -362,10 +373,10 @@ def CheckTimeFeasiblity(veh, customer, customers, toCenter = True, rider_route_c
     if rider_route_cal_type == 'return':
         if who == 'test_platform':
             rev_last_location = veh.now_ct[1]
-            time = CalTime2(rev_last_location, veh.speed, customer, center=[25,25], toCenter=toCenter,customer_set=customers)
+            time = CalTime2(rev_last_location, veh.speed, customer, center=init_center, toCenter=toCenter,customer_set=customers)
             #print('플랫폼 시점의 라이더 위치{}:: 고객이름{} ::복귀{} ::시간{}'.format(rev_last_location, customer.name,  [25,25],time))
         else:
-            time = CalTime2(veh.last_location, veh.speed, customer, center=[25,25], toCenter=toCenter,customer_set=customers)
+            time = CalTime2(veh.last_location, veh.speed, customer, center=init_center, toCenter=toCenter,customer_set=customers)
             #print('라이더 시점의 라이더 위치{}:: 고객이름{} ::복귀{} ::시간{}'.format(veh.last_location,customer.name,  [25,25],time))
     elif rider_route_cal_type == 'no_return':
         time = CalTime2(veh.last_location, veh.speed, customer, center=customer.location[1], toCenter=toCenter,
@@ -380,7 +391,7 @@ def CheckTimeFeasiblity(veh, customer, customers, toCenter = True, rider_route_c
         pass
     cost = (time / 60) * veh.wageForHr
     ###이 고객이 자신의 end_time 내에 서비스 받을 수 있는지 계산.###
-    t2 = time - distance(customer.location[1], customers[0].location[0]) / veh.speed
+    t2 = time - distance(customers[0].location[0],customer.location[1]) / veh.speed
     time_para = now_time + t2 < customer.time_info[0] + customer.time_info[5]  # time_para == True인 경우는 해당 고객이 자신의 end_time이전에 서비스 받을 수 있음을 의미.
     #print('고객 {} 기준 비용 {}'.format(customer.name , cost))
     return time_para, cost, round(time,1)
@@ -417,6 +428,8 @@ def PriorityOrdering(veh, customers, minus_para = False, toCenter = True, who = 
             cost2 = veh.error
         elif who == 'test_rider':
             fee = fee* veh.coeff[2]
+            #print(veh.expect, customer.type,veh.coeff[1])
+            #input('확인')
             cost2 = veh.expect[customer.type] * veh.coeff[1]
             cost = cost*veh.coeff[0]
         elif who == 'test_platform':
@@ -463,7 +476,7 @@ def PriorityOrdering(veh, customers, minus_para = False, toCenter = True, who = 
     return res
 
 
-def CalTime2(veh_location,veh_speed, customer, center=[25,25], toCenter = True, customer_set = []):
+def CalTime2(veh_location,veh_speed, customer, center=1, toCenter = True, customer_set = []):
     """
     cost(1) : customer를 서비스하는 비용
     cost(2) : 종료 후 다시 중심으로 돌아오는데 걸리는 시간.
@@ -474,18 +487,19 @@ def CalTime2(veh_location,veh_speed, customer, center=[25,25], toCenter = True, 
     :return: 필요한 시간
     """
     #print('Cal Time2',veh_location, customer.location, center)
-    time = distance(veh_location, customer.location[0]) / veh_speed #자신의 위치에서 가게 까지
+    time = distance(customer.location[0],veh_location) / veh_speed #자신의 위치에서 가게 까지
     #time += distance(customer.location[0], customer.location[1]) / veh_speed
     t2 = distance(customer.location[0], customer.location[1]) / veh_speed # 가게에서 고객 까지
     #print('t1:',int(time), 't2:', int(t2))
     time += t2
     time += (customer.time_info[6] + customer.time_info[7]) #고객 서비스 시간.
     if toCenter == True:
-        time += distance(customer.location[1], center)/veh_speed
+        #print('거꾸로?')
+        time += distance(center,customer.location[1])/veh_speed
     else: #라이더가 돌아가는 위치가 현재 가능한 주문들 중 가장 가까운 가게라고 계산하는 경우
         dist = []
         for ct in customer_set:
-            dist.append([ct.name, distance(customer.location[1], ct.location[0])])
+            dist.append([ct.name, distance(ct.location[0],customer.location[1])])
         if len(dist) > 0:
             dist.sort(key=operator.itemgetter(1))
             time += dist[0][1]/ veh_speed
@@ -586,17 +600,29 @@ def WhoGetPriority(customers , cut, now_time, time_thres = 0.8, print_para = Fal
     return [], []
 
 
-def distance(p1, p2, data = None):
+def distance(p1, p2):
     """
     두 지점 사이의 거리를 반환
     :param p1: [x,y]
     :param p2: [x,y]
     :return: 거리
     """
+    global shortest_path_data_np
     if type(p1) == list and type(p2) == list:
         res = round(math.sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2), 2)
     else:
-        res = data[p1,p2]*1000
+        if type(p1) != int or type(p2) != int:
+            print(p1, p2)
+            input('ERROR2')
+        store_max_index = np.shape(shortest_path_data_np)[0]
+        customer_max_index = np.shape(shortest_path_data_np)[1]
+        if p1 > store_max_index or p2 > customer_max_index:
+            print('거꾸로 필요',p1,'=<', store_max_index, '::',p2,'=<', customer_max_index)
+            #input('error')
+        try:
+            res = float(shortest_path_data_np[p1,p2]*1000)
+        except:
+            res = float(shortest_path_data_np[p2, p1] * 1000)
     return res
 
 

@@ -6,8 +6,9 @@ import Basic_class as Basic
 import InstanceGen_class
 import ValueRevise
 import matplotlib.pyplot as plt
+import random
 
-
+"""
 global type_num
 global std
 global LP_type
@@ -18,6 +19,24 @@ global rider_coeff
 global incentive_time_ratio
 global run_ite_num
 global slack1
+"""
+
+
+cost_coeff = round(random.uniform(0.2, 0.45), 2)
+type_coeff = 0.6 - cost_coeff  # round(random.uniform(0.8,1.2),1)
+coeff = [cost_coeff, type_coeff, 0.4]  # [cost_coeff,type_coeff,1.5] #[cost_coeff,type_coeff,1] #[1,1,1]
+
+
+type_num = 4
+std = 1
+LP_type = 'LP3'
+beta = 1
+input_para = False
+input_instances = None
+rider_coeff = coeff
+incentive_time_ratio = 0.3
+run_ite_num = 1
+slack1 = 1
 
 ExpectedCustomerPreference = []
 inc = int(1000/type_num)
@@ -31,9 +50,9 @@ for _ in range(type_num):
 store_loc_data = InstanceGen_class.LocDataTransformer('송파구store_Coor.txt', index = 0)
 #2 고객 데이터
 customer_loc_data = InstanceGen_class.LocDataTransformer('송파구house_Coor.txt', index = 0)
-customer_loc_data += InstanceGen_class.LocDataTransformer('송파구commercial_Coor.txt', index = len(customer_loc_data))
+#customer_loc_data += InstanceGen_class.LocDataTransformer('송파구commercial_Coor.txt', index = len(customer_loc_data))
 
-harversion_dist_data = np.load('송파구_harversion_Distance_data.npy')
+harversion_dist_data = np.load('송파구_Haversine_Distance_data.npy')
 shortestpath_dist_data = np.load('송파구_ShortestPath_Distance_data.npy')
 customer_gen_numbers = 300
 
@@ -63,11 +82,13 @@ subsidy_offer_count = [0] * int(math.ceil(run_time / 60))  # [0]* (run_time//60)
 env = simpy.Environment()
 CUSTOMER_DICT = {}
 RIDER_DICT = {}
-CUSTOMER_DICT[0] = Basic.Customer(env, 0, input_location=[[36, 36], [36, 36]])
+start_pos = 1
+#CUSTOMER_DICT[0] = Basic.Customer(env, 0, input_location=[[36, 36], [36, 36]])
 env.process(InstanceGen_class.DriverMaker(env, RIDER_DICT, CUSTOMER_DICT, end_time=run_time, speed=speed,
                                           intervals=rider_intervals[0], interval_para=True, toCenter=toCenter,
                                           run_time=driver_make_time, error=np.random.choice(driver_error_pool), pref_info = 'test_rider',
-                                          driver_left_time = driver_left_time, num_gen= driver_num,ExpectedCustomerPreference=ExpectedCustomerPreference,rider_coeff=rider_coeff))
+                                          driver_left_time = driver_left_time, num_gen= driver_num,ExpectedCustomerPreference=ExpectedCustomerPreference,
+                                          rider_coeff=rider_coeff, start_pos = start_pos))
 #env.process(InstanceGen_class.CustomerGeneratorForIP(env, CUSTOMER_DICT, data_dir + '.txt', input_fee=fee, input_loc= input_para,
 #                                                     type_num = type_num, std = std, input_instances= input_instances))
 env.process(InstanceGen_class.CustomerGeneratorForNPYData(env, CUSTOMER_DICT, store_loc_data, customer_loc_data,harversion_dist_data,shortestpath_dist_data,customer_gen_numbers,
