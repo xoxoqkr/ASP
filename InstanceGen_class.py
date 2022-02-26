@@ -96,7 +96,7 @@ def CustomerGeneratorForIP(env, customer_dict, dir=None, end_time=1000,  custome
             break
 
 
-def CustomerGeneratorForNPYData(env, customer_dict, store_loc_data, customer_loc_data,harversion_dist_data,shortestpath_dist_data,gen_numbers,
+def CustomerGeneratorForNPYData(env, customer_dict, store_loc_data, customer_loc_data, harversion_dist_data,shortestpath_dist_data,gen_numbers,
                                 fee_type = 'harversion',end_time=1000,  basic_fee = 2500,customer_wait_time = 40, lamda = None, type_num = 4):
     """
     주어진 입력 값에 대한 고객을 생성. 아래 요인들이 중요
@@ -117,8 +117,15 @@ def CustomerGeneratorForNPYData(env, customer_dict, store_loc_data, customer_loc
     """
     ordered_customer_names = []
     for num in range(1,gen_numbers):
+        store_name = num
+        customer_name = num
+
+
         store_name = random.choice(range(len(store_loc_data)))
         count = 0
+
+
+
         while count < 1000:
             customer_name = random.choice(range(len(customer_loc_data)))
             count += 1
@@ -150,6 +157,50 @@ def CustomerGeneratorForNPYData(env, customer_dict, store_loc_data, customer_loc
         if env.now > end_time:
             break
 
+
+def CustomerGeneratorForNPYData2(env, customer_dict, harversion_dist_data,shortestpath_dist_data,gen_numbers,
+                                fee_type = 'harversion',end_time=1000,  basic_fee = 2500,customer_wait_time = 40, lamda = None, type_num = 4):
+    """
+    주어진 입력 값에 대한 고객을 생성. 아래 요인들이 중요
+    -배송비 책정
+    -고객 생성 간격
+    -고객 위치 분포
+
+    :param env: simpy Environment
+    :param customer_dict: 고객 dict <- 생성된 고객이 저장되는 dict
+    :param dir: 고객 데이터 저장 위치
+    :param end_time: 고객 생성 종료 시점
+    :param customer_wait_time: 고객의 주문 발생 후 기다리는 시간. 이 시간 동안 서비스를 받지 못한 고객은 주문을 철회
+    :param fee: 배송 요금(fee == None인 경우에는 거리에 대한 계단형 방식-FeeCalculator-으로 요금 계산)
+    :param lamda: 고객 생성 간격
+    :param add_fee: 추가 요금
+    :param basic_fee: 기본 요금
+    :param steps: 거리에 비례해 계산되는 요금을 계산하기 위한 거리별 요금 정보
+    """
+    for num in range(0,gen_numbers):
+        if fee_type == 'shortest_path':
+            ODdist = harversion_dist_data[num,num]
+        else:
+            ODdist = shortestpath_dist_data[num,num]
+        fee = round((ODdist*10) * 100, 2) + basic_fee  # 2500 #ODdist 는 키로미터
+        input('거리{} 수수료{}'.format(ODdist,fee))
+        far_para = 0
+        if ODdist >= 3:
+            far_para = 1
+        c = Basic.Customer(env, num, input_location=[num, num], fee=fee,
+                           end_time=customer_wait_time, far=far_para, type_num=type_num)
+        customer_dict[num] = c
+        if lamda == None:
+            yield env.timeout(3)
+        else:
+            try:
+                yield env.timeout(Basic.NextMin(lamda))
+            except:
+                print("lamda require type int+ or float+")
+                yield env.timeout(4)
+        if env.now > end_time:
+            break
+
 def LocDataTransformer(dir, index = 0):
     res = []
     datas = open(dir, 'r')
@@ -166,7 +217,7 @@ def LocDataTransformer(dir, index = 0):
 def DriverMaker(env, driver_dict, customer_set ,speed = 2, end_time = 800, intervals = [], interval_para = False, interval_res = [],
                 toCenter = True, error = 0, run_time = 900, pref_info = None, driver_left_time = 120, print_para = False,
                 start_pos = [26,26], value_cal_type = 'return', num_gen = 10, coeff_revise_option = False, weight_sum = False,
-                ExpectedCustomerPreference = [0,250,500,750], rider_coeff = None, re_new = True, day_count = 0, yesterday_RIDER_DICT = None):
+                ExpectedCustomerPreference = [0,250,500,750], rider_coeff = None, re_new = True, day_count = 0, yesterday_RIDER_DICT = None, none_wait = False):
     """
     주어진 입력값으로 행동하는 라이더를 생성
     :param env: simpy Environment

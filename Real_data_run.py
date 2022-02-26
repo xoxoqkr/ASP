@@ -7,7 +7,7 @@ import InstanceGen_class
 import ValueRevise
 import matplotlib.pyplot as plt
 import random
-
+import SubsidyPolicy_class
 """
 global type_num
 global std
@@ -29,7 +29,7 @@ coeff = [cost_coeff, type_coeff, 0.4]  # [cost_coeff,type_coeff,1.5] #[cost_coef
 
 type_num = 4
 std = 1
-LP_type = 'LP3'
+LP_type = 'LP2'
 beta = 1
 input_para = False
 input_instances = None
@@ -52,12 +52,12 @@ store_loc_data = InstanceGen_class.LocDataTransformer('송파구store_Coor.txt',
 customer_loc_data = InstanceGen_class.LocDataTransformer('송파구house_Coor.txt', index = 0)
 #customer_loc_data += InstanceGen_class.LocDataTransformer('송파구commercial_Coor.txt', index = len(customer_loc_data))
 
-harversion_dist_data = np.load('송파구_Haversine_Distance_data.npy')
-shortestpath_dist_data = np.load('송파구_ShortestPath_Distance_data.npy')
+harversion_dist_data = np.load('rev_송파구_Haversine_Distance_data0.npy')
+shortestpath_dist_data = np.load('rev_송파구_shortest_path_Distance_data0.npy')
 customer_gen_numbers = 300
 
 #파라메터
-speed = 260 #meter per minute
+speed = 260 #meter per minute 15.6km/hr
 toCenter = False
 customer_wait_time = 10000
 fee = None
@@ -69,10 +69,17 @@ add_fee = 1500
 driver_left_time = 1000
 driver_make_time = 200
 steps = [[]]
-driver_num = 1
+driver_num = 5
 weight_sum = True
 revise_para = True
 ###Running
+solver_running_interval = 10
+upper = 1500 #보조금 상한 지급액
+checker = False
+print_para = True
+dummy_customer_para = False #라이더가 고객을 선택하지 않는 경우의 input을 추가 하는가?
+policy_type = 'subsidy' # 'normal'
+
 run_time = 1000
 validation_t = 0.7*driver_left_time
 incentive_time = incentive_time_ratio * driver_left_time
@@ -91,10 +98,21 @@ env.process(InstanceGen_class.DriverMaker(env, RIDER_DICT, CUSTOMER_DICT, end_ti
                                           rider_coeff=rider_coeff, start_pos = start_pos))
 #env.process(InstanceGen_class.CustomerGeneratorForIP(env, CUSTOMER_DICT, data_dir + '.txt', input_fee=fee, input_loc= input_para,
 #                                                     type_num = type_num, std = std, input_instances= input_instances))
-env.process(InstanceGen_class.CustomerGeneratorForNPYData(env, CUSTOMER_DICT, store_loc_data, customer_loc_data,harversion_dist_data,shortestpath_dist_data,customer_gen_numbers,
+#env.process(InstanceGen_class.CustomerGeneratorForNPYData(env, CUSTOMER_DICT, store_loc_data, customer_loc_data,harversion_dist_data,shortestpath_dist_data,customer_gen_numbers,
+#                                fee_type = 'harversion',end_time=1000,  basic_fee = 2500,customer_wait_time = 40, lamda = None, type_num = 4))
+env.process(InstanceGen_class.CustomerGeneratorForNPYData2(env, CUSTOMER_DICT, harversion_dist_data,shortestpath_dist_data,customer_gen_numbers,
                                 fee_type = 'harversion',end_time=1000,  basic_fee = 2500,customer_wait_time = 40, lamda = None, type_num = 4))
+"""
 env.process(ValueRevise.SystemRunner(env, RIDER_DICT, CUSTOMER_DICT, run_time, ox_table, weight_sum = weight_sum, revise = revise_para,
                                      beta = beta, LP_type = LP_type, validation_t = validation_t,incentive_time = incentive_time, slack1 =slack1))
+"""
+env.process(SubsidyPolicy_class.SystemRunner(env, RIDER_DICT, CUSTOMER_DICT, run_time, interval=solver_running_interval,
+                                             No_subsidy=policy_type,
+                                             subsidy_offer=subsidy_offer, subsidy_offer_count=subsidy_offer_count,
+                                             upper=upper,
+                                             checker=checker, toCenter=toCenter,
+                                             dummy_customer_para=dummy_customer_para, LP_type = LP_type))
+
 env.run(until=run_time)
 
 #Save_result

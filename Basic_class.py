@@ -13,7 +13,7 @@ from ValueRevise import RiderWeightUpdater
 
 
 global shortest_path_data_np
-shortest_path_data_np = np.load('송파구_ShortestPath_Distance_data.npy')
+shortest_path_data_np = np.load('rev_송파구_shortest_path_Distance_data0.npy')
 
 
 class Customer(object):
@@ -101,7 +101,7 @@ class Rider(object):
         self.subsidy_analyze = []
         self.choice = []
         self.choice_info = []
-        self.now_ct = [[26,26],[26,26]]
+        self.now_ct = [1,1]#[[26,26],[26,26]]
         self.w_data = []
         for slot_num in range(int(math.ceil(run_time / 60))):
             self.fee_analyze.append([])

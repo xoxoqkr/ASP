@@ -251,7 +251,7 @@ def ExpectedSCustomer(rider_set, rider_names, d_orders_res, customer_set, now_ti
     return expected_cts, add_info
 
 def SystemRunner(env, rider_set, customer_set, run_time, interval=10, No_subsidy=False, subsidy_offer=[],
-                 subsidy_offer_count=[], time_thres=0.8, upper=10000, checker=False, toCenter=True, dummy_customer_para = False,weight_sum=3):
+                 subsidy_offer_count=[], time_thres=0.8, upper=10000, checker=False, toCenter=True, dummy_customer_para = False,weight_sum=3, LP_type = 'LP2'):
     """
     입력 값에 따라 시뮬레이션 진행
     No_subsidy에 따라 2가지 상황이 가능.
@@ -278,7 +278,7 @@ def SystemRunner(env, rider_set, customer_set, run_time, interval=10, No_subsidy
         # C_p에 해당하는 고객이 이미 선택될 것으로 예상되는 경우
         # 라이더 체크 확인
         un_cts = Basic.UnloadedCustomer(customer_set, env.now)  # 아직 실리지 않은 고객 식별
-        v_old, rider_names, cts_name, d_orders_res, times, end_times = ProblemInput(rider_set, customer_set, env.now, upper=upper, dummy_customer_para = dummy_customer_para, who = 'test_platform')  # 문제의 입력 값을 계산
+        v_old, rider_names, cts_name, d_orders_res, times, end_times = ProblemInput(rider_set, customer_set, env.now, upper=upper, dummy_customer_para = dummy_customer_para, who = 'test_platform', LP_type = LP_type)  # 문제의 입력 값을 계산
         urgent_cts, tem1 = Basic.WhoGetPriority(un_cts, len(rider_names), env.now, time_thres=time_thres)  # C_p 계산
         expected_cts, dummy = ExpectedSCustomer(rider_set, rider_names, d_orders_res, customer_set, round(env.now,2) , toCenter = toCenter, who = 'platform')
         print('T {} 데이터 확인 급한 고객;{} 예상 선택 고객;{};라이더 선택 순서; {};주문 선택 가능한 라이더들;{}'.format(int(env.now), urgent_cts,expected_cts,d_orders_res,rider_names))
