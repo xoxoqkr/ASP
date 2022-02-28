@@ -140,7 +140,7 @@ class Rider(object):
         print('라이더 {} 운행 종료 T {}'.format(self.name, self.env.now))
 
 
-    def CustomerSelector(self, customer_set, toCenter = True, pref = 'None', save_info = False, value_cal_type = 'return', print_para = False):
+    def CustomerSelector(self, customer_set, toCenter = True, pref = 'None', save_info = False, value_cal_type = 'return', print_para = True):
         """
         고객 (customer_set)에 대해 PriorityOrdering를 통해, 고객들의 가치를 계산.
         계산 된 고객들 중 가치가 가장 큰 고객을 선택.
@@ -215,7 +215,7 @@ class Rider(object):
             #print('라이더::', self.name, '시간::',env.now)
             if len(self.veh.put_queue) == 0 and self.wait == False:
                 #print('Rider', self.name, 'assign1 at', env.now)
-                ct_name, infos = self.CustomerSelector(customer_set, toCenter = toCenter, pref = pref, save_info = save_info, print_para = True)
+                ct_name, infos = self.CustomerSelector(customer_set, toCenter = toCenter, pref = 'test_rider', save_info = save_info, print_para = True)
                 if infos != None: #infos == None인 경우에는 고를 고객이 없다는 의미임.
                     """
                     rev_infos = []
@@ -446,15 +446,15 @@ def PriorityOrdering(veh, customers, minus_para = False, toCenter = True, who = 
         end_slack_time = veh.env.now - (customer.time_info[0] + customer.time_info[5] + 10)
         if time_para == True:
             if minus_para == True:
-                res.append([customer.name, max(0,int(fee - cost - cost2)), int(org_cost), int(fee), time, 'Profit1',cost, customer.type,save_fee,end_slack_time],)
+                res.append([customer.name, max(0,round(fee - cost - cost2,4)), int(org_cost), int(fee), time, 'Profit1',cost, customer.type,save_fee,end_slack_time],)
             elif fee > cost + cost2 :
-                res.append([customer.name, int(fee - cost - cost2), int(org_cost), int(fee), time, 'Profit2',cost, customer.type,save_fee,end_slack_time])
+                res.append([customer.name, round(fee - cost - cost2,4), int(org_cost), int(fee), time, 'Profit2',cost, customer.type,save_fee,end_slack_time])
             else:
                 #print('negative value',int(fee - cost- cost2))
-                res.append([customer.name, int(fee - cost - cost2), int(org_cost), int(fee), time,'N/A1',cost, customer.type,save_fee,end_slack_time])
+                res.append([customer.name, round(fee - cost - cost2,4), int(org_cost), int(fee), time,'N/A1',cost, customer.type,save_fee,end_slack_time])
                 pass
         else:
-            res.append([customer.name,int(fee - cost - cost2),int(org_cost),int(fee), time,'N/A2',cost, customer.type, save_fee,end_slack_time])
+            res.append([customer.name,round(fee - cost - cost2,4),int(org_cost),int(fee), time,'N/A2',cost, customer.type, save_fee,end_slack_time])
         res[-1].append(cost2)
         res[-1].append(customer.type)
     if len(res) > 0:

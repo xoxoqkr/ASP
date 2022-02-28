@@ -297,17 +297,19 @@ def IncentiveForValueWeightExpectationLP3(rider, customer_set, LP_type = 'LP3', 
         if customer.time_info[1] == None and customer.time_info[0] + customer.time_info[5] > now_t and customer_name > 0:
             un_assigned_cts.append(customer)
     infos = Basic.PriorityOrdering(rider, un_assigned_cts, toCenter=False, who='test_platform',rider_route_cal_type='return', last_location=None, LP_type=LP_type)
-    print('고객 정보 확인',infos)
+    #print('고객 정보 확인',infos)
+    print('예상 1등 주문', infos[0])
+    print('구분자')
     print_res = []
     ct_names = []
     if len(infos) > 1:
         selected_value = infos[0][1]
         for info in infos[1:]:
             diff = selected_value - info[1]
-            print('diff', diff, selected_value, info[1])
             try:
-                required_incentive = diff / rider.LP3p_coeff[0]
-                if 0 < required_incentive < upper and rider.LP3p_coeff[0] > 0:
+                required_incentive = float(diff) / rider.LP3p_coeff[2] #todo 0223:index 확인
+                #print('diff', diff, selected_value, info[1],required_incentive)
+                if 0 < required_incentive < upper and rider.LP3p_coeff[2] > 0:
                     customer_set[info[0]].fee[1] = required_incentive
                     customer_set[info[0]].fee[2] = 'all'
                     print_res.append([info[0], required_incentive, customer_set[info[0]].time_info])
@@ -339,7 +341,7 @@ def SystemRunner(env, rider_set, customer_set, cool_time, ox_table ,interval=10,
             rider = rider_set[rider_name]
             if env.now < rider.end_time <= env.now + interval and env.now < incentive_time:
                 print('라이더 :{} ; 고객 선택 시점 :{}; 현재 시점 :{}'.format(rider.name, rider.end_time, int(env.now)))
-                IncentiveForValueWeightExpectationLP3(rider, customer_set, LP_type='LP3', now_t= env.now)
+                IncentiveForValueWeightExpectationLP3(rider, customer_set, LP_type='LP3', now_t= env.now) #todo: 보조금 계산
         yield env.timeout(interval)
         now = round(env.now, 1)
         print('과거 {} ~ 현재 시점 {}// 라이더 선택들{}'.format(now - interval, now, rider_set[0].choice))
@@ -381,7 +383,7 @@ def SystemRunner(env, rider_set, customer_set, cool_time, ox_table ,interval=10,
                 if LP3_res == True:
                     rider.validations[2] += 1
         else:
-            print('시작 확인')
+            print('시작 확인') #todo : 가치 가중치 계산
             for rider_name in rider_set:
                 rider = rider_set[rider_name]
                 print('라이더:',rider.name)
@@ -485,6 +487,9 @@ def SystemRunner(env, rider_set, customer_set, cool_time, ox_table ,interval=10,
                                                                        LP_type='LP3')  # 실제 라이더가 선택할 시점의 [-dist_cost, -type_cost, fee]
                             if len(past_others) > 0:
                                 LP3past_choices.append([past_select, past_others])
+                            else:
+                                print(past_others)
+                                input('길이0')
                         LP3feasibility, LP3res, LP3exe_t, LP3_obj = lpg.ReviseCoeffAP3(selected, others, rider.LP3p_coeff,
                                                                               past_data=LP3past_choices,
                                                                               weight_sum=weight_sum)

@@ -23,10 +23,11 @@ for beta in betas:
             std_input = std
             input_instances = InstanceGen(unit_dist=unit_dist, std=std_input, max_x=max_x, max_y=max_y, gen_n=10000)
             for ite in range(100):
-                cost_coeff = round(random.uniform(0.6,1),1)
-                type_coeff = 3 - (1.5 + cost_coeff) #round(random.uniform(0.8,1.2),1)
+                cost_coeff = round(random.uniform(0.7,1.1),1)
+                #cost_coeff = round(1.3)
+                #type_coeff = 3 - (1.5 + cost_coeff) #round(random.uniform(0.8,1.2),1)
                 #fee_coeff = 1.5
-                #type_coeff = 0
+                type_coeff = round(random.uniform(0.7,1.1),1)
                 fee_coeff = 3 - (type_coeff + cost_coeff)
                 coeff = [cost_coeff,type_coeff,fee_coeff] #[cost_coeff,type_coeff,1] #[1,1,1]
                 for LP_type in LP_types:

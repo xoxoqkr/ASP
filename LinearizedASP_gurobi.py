@@ -471,6 +471,7 @@ def ReviseCoeffAP3(selected, others, org_coeff, past_data = [], Big_M = 100000, 
     :param past_data: 과거 선택들
     :return:
     """
+    print('LP3 coeff',org_coeff)
     weight_direction = [1,1,1]
     coeff_indexs = list(range(len(org_coeff)))
     dummy_indexs = list(range(1 + len(past_data)))
@@ -490,7 +491,7 @@ def ReviseCoeffAP3(selected, others, org_coeff, past_data = [], Big_M = 100000, 
     # D.V. and model set.
     m = gp.Model("mip1")
     w = m.addVars(len(org_coeff), lb = -2, vtype=GRB.CONTINUOUS, name="w")
-    y = m.addVar(ub=Big_M, vtype=GRB.CONTINUOUS, name="y")
+    y = m.addVar(lb = -1000, ub=Big_M, vtype=GRB.CONTINUOUS, name="y")
     #y = m.addVars(1 + len(past_data), max_data_size, ub = Big_M, vtype = GRB.CONTINUOUS, name= "y")
     #Objective Function
     m.setObjective(y, GRB.MAXIMIZE)
@@ -498,6 +499,8 @@ def ReviseCoeffAP3(selected, others, org_coeff, past_data = [], Big_M = 100000, 
     dummy_index = 0
     error_term_index = 0
     #계수 합 관련
+    #m.addConstr(w[1] == 0) #todo : 2차원만 고려해 보자.
+    #m.addConstr(y == 0)
     if weight_sum == True:
         m.addConstrs((w[i] >= 0 for i in coeff_indexs), name = 'c3')
         m.addConstr((gp.quicksum((w[i] ) for i in coeff_indexs) == 3), name = 'c4')
@@ -544,6 +547,8 @@ def ReviseCoeffAP3(selected, others, org_coeff, past_data = [], Big_M = 100000, 
     obj = []
     revise_obj = []
     #input('모형 확인')
+    #Binding Constraint 보기
+
     try:
         print('Obj val: %g' % m.objVal)
         #print(w)

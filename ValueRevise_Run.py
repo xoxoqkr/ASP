@@ -22,8 +22,10 @@ inc = int(1000/type_num)
 type_fee = 0
 for _ in range(type_num):
     ExpectedCustomerPreference.append(type_fee)
+    ExpectedCustomerPreference.append(500)
     type_fee += inc
-
+#input(ExpectedCustomerPreference)
+#ExpectedCustomerPreference = [500,500,500,500,500]
 
 #파라메터
 speed = 1
