@@ -27,7 +27,7 @@ def InputCalculate(expectation, actual_result):
 #[int(env.now), ct_name, self.last_location , rev_infos]
 # rev_infos = [고객 이름, fee-cost - cost2, cost, fee]
 
-def InputCalculate2(rider, customer_set, index = -1, LP_type = 'LP1'):
+def InputCalculate2(rider, customer_set, index = -1, LP_type = 'rider_org_coeff',divider = [1.0,1.0]):
     """
     select_coefficient = []
     select_info = rider.choice_info[3][0]
@@ -50,9 +50,9 @@ def InputCalculate2(rider, customer_set, index = -1, LP_type = 'LP1'):
         input('정보 확인 3333; {}'.format(rider.choice_info[index]))
         return [], []
     for info in rider.choice_info[index][3]:
-        #print('정보 확인 1234 ;; {}'.format(rider.choice_info[index]))
+        #print('정보 확인 1234 ;; {}'.format(info))
         ct_name = info[0]
-        dist_cost = info[2]
+        dist_cost = info[6]/divider[0]
         #try:
         #    print('에러 없음 {} ; {}; {}'.format(len(customer_set), ct_name, info))
         #    customer_type = customer_set[ct_name].type
@@ -60,12 +60,18 @@ def InputCalculate2(rider, customer_set, index = -1, LP_type = 'LP1'):
         #    print('에러 발생 {} ; {}; {}'.format(len(customer_set), ct_name, info))
         type_cost = rider.expect[info[11]]
         #type_cost = rider.expect[customer_type]
-        fee = info[3]
+        fee = info[3]/divider[1]
         #fee = customer_set[ct_name].fee[0]
         if LP_type == 'LP1':
-            rev_infos.append([-dist_cost, -type_cost, fee,ct_name,info[1],info[-1],-type_cost*rider.LP1p_coeff[1],-type_cost*rider.LP1p_coeff[1]])
+            rev_infos.append([-dist_cost*rider.LP1p_coeff[0], -type_cost*rider.LP1p_coeff[1], fee*rider.LP1p_coeff[2],ct_name,info[1],info[-1],-type_cost*rider.LP1p_coeff[1],-type_cost*rider.LP1p_coeff[1]])
+        if LP_type == 'LP2':
+            rev_infos.append([-dist_cost*rider.LP2p_coeff[0], -type_cost*rider.LP2p_coeff[1], fee*rider.LP2p_coeff[2],ct_name,info[1],info[-1],-type_cost*rider.LP2p_coeff[1],-type_cost*rider.LP2p_coeff[1]])
+        if LP_type == 'LP3':
+            rev_infos.append([-dist_cost*rider.LP3p_coeff[0], -type_cost*rider.LP3p_coeff[1], fee*rider.LP3p_coeff[2],ct_name,info[1],info[-1],-type_cost*rider.LP3p_coeff[1],-type_cost*rider.LP3p_coeff[1]])
         else:
             rev_infos.append([-dist_cost, -type_cost, fee,ct_name,info[1],info[-1],-type_cost*rider.LP2p_coeff[1],-type_cost*rider.LP2p_coeff[1]])
+        #print('확인',rev_infos)
+        #rev_infos.append([-dist_cost, -type_cost, fee, ct_name, info[1], info[-1], -type_cost * rider.LP2p_coeff[1],-type_cost * rider.LP2p_coeff[1]])
         check.append([ct_name, info[1]])
     check.sort(key = operator.itemgetter(1), reverse = True)
     print('Rider',rider.coeff)
@@ -296,13 +302,15 @@ def IncentiveForValueWeightExpectationLP3(rider, customer_set, LP_type = 'LP3', 
         customer = customer_set[customer_name]
         if customer.time_info[1] == None and customer.time_info[0] + customer.time_info[5] > now_t and customer_name > 0:
             un_assigned_cts.append(customer)
-    infos = Basic.PriorityOrdering(rider, un_assigned_cts, toCenter=False, who='test_platform',rider_route_cal_type='return', last_location=None, LP_type=LP_type)
-    #print('고객 정보 확인',infos)
+    infos = Basic.PriorityOrdering(rider, un_assigned_cts, toCenter=False, who='test_platform',rider_route_cal_type='return', last_location=rider.exp_last_location, LP_type=LP_type)
+    print('고객 정보 확인',infos)
+    print('세팅1 toCenter:{} / who:{}/rider_route_cal_type :{}/last_loc:{}/LP_type :{}'.format(False,'test_platform','return',rider.exp_last_location,LP_type))
     print('예상 1등 주문', infos[0])
-    print('구분자')
+    print('구분자1', rider.last_location, '예측', rider.exp_last_location)
     print_res = []
     ct_names = []
     if len(infos) > 1:
+        print('자료1',rider.LP3p_coeff)
         selected_value = infos[0][1]
         for info in infos[1:]:
             diff = selected_value - info[1]
@@ -314,6 +322,9 @@ def IncentiveForValueWeightExpectationLP3(rider, customer_set, LP_type = 'LP3', 
                     customer_set[info[0]].fee[2] = 'all'
                     print_res.append([info[0], required_incentive, customer_set[info[0]].time_info])
                     ct_names.append(info[0])
+                    print('비교',round(selected_value),'::', round(info[1] + required_incentive*rider.LP3p_coeff[2]))
+                    print(infos[0])
+                    print(info)
             except:
                 pass
     ct_names.sort()
@@ -356,7 +367,7 @@ def SystemRunner(env, rider_set, customer_set, cool_time, ox_table ,interval=10,
                 print('R{} T:{}~{}에 고객 {} 선택'.format(rider_name, int(env.now - interval), int(env.now),
                                                      rider.choice_info[-1]))
                 #input('주문 선택')
-                selected, others = InputCalculate2(rider, customer_set)  # 실제 라이더가 선택한 고객의 [-dist_cost, -type_cost, fee]
+                selected, others = InputCalculate2(rider, customer_set,divider = [rider.coeff[0],rider.coeff[2]])  # 실제 라이더가 선택한 고객의 [-dist_cost, -type_cost, fee]
                 rider.validations[3] += 1
                 LP1_res = True
                 LP1_selected_value = np.dot(rider.LP1p_coeff, selected[:len(rider.LP1p_coeff)])
@@ -390,7 +401,7 @@ def SystemRunner(env, rider_set, customer_set, cool_time, ox_table ,interval=10,
                 #print(rider.choice_info)
                 if len(rider.choice_info) > 0 and env.now - interval <= rider.choice_info[-1][0]:
                     print('R{} T:{}~{}에 고객 {} 선택'.format(rider_name, int(env.now - interval), int(env.now), rider.choice_info[-1]))
-                    selected, others = InputCalculate2(rider, customer_set)  # 실제 라이더가 선택한 고객의 [-dist_cost, -type_cost, fee]
+                    selected, others = InputCalculate2(rider, customer_set, divider = [rider.coeff[0],rider.coeff[2]])  # 실제 라이더가 선택한 고객의 [-dist_cost, -type_cost, fee]
                     indexs = list(range(len(rider.choice_info) - 1))
                     indexs.reverse()
                     #rider.validations[3] += 1
@@ -425,7 +436,7 @@ def SystemRunner(env, rider_set, customer_set, cool_time, ox_table ,interval=10,
                     else:
                         for index1 in indexs:
                             past_select, past_others = InputCalculate2(rider, customer_set, index=index1,
-                                                                       LP_type='LP1')  # 실제 라이더가 선택할 시점의 [-dist_cost, -type_cost, fee]
+                                                                       divider = [rider.coeff[0],rider.coeff[2]],LP_type='LP1')  # 실제 라이더가 선택할 시점의 [-dist_cost, -type_cost, fee]
                             if len(past_others) > 0:
                                 LP1past_choices.append([past_select, past_others])
                         LP1feasibility, LP1res, LP1exe_t, LP1_obj = lpg.ReviseCoeffAP1(selected, others, rider.LP1p_coeff,
@@ -454,7 +465,7 @@ def SystemRunner(env, rider_set, customer_set, cool_time, ox_table ,interval=10,
                                 past_others = []
                                 error_para = True
                             else:
-                                past_select, past_others = InputCalculate2(rider, customer_set,
+                                past_select, past_others = InputCalculate2(rider, customer_set,divider = [rider.coeff[0],rider.coeff[2]],
                                                                            index=index1, LP_type= 'LP2')  # 실제 라이더가 선택할 시점의 [-dist_cost, -type_cost, fee]
                             if len(past_others) > 0:
                                 LP2past_choices.append([past_select, past_others])
@@ -483,13 +494,14 @@ def SystemRunner(env, rider_set, customer_set, cool_time, ox_table ,interval=10,
                         LP3feasibility = False
                     else:
                         for index1 in indexs:
-                            past_select, past_others = InputCalculate2(rider, customer_set, index=index1,
+                            past_select, past_others = InputCalculate2(rider, customer_set, index=index1,divider = [rider.coeff[0],rider.coeff[2]],
                                                                        LP_type='LP3')  # 실제 라이더가 선택할 시점의 [-dist_cost, -type_cost, fee]
                             if len(past_others) > 0:
                                 LP3past_choices.append([past_select, past_others])
                             else:
                                 print(past_others)
                                 input('길이0')
+                        print('구분자2', rider.last_location, '예측', rider.exp_last_location)
                         LP3feasibility, LP3res, LP3exe_t, LP3_obj = lpg.ReviseCoeffAP3(selected, others, rider.LP3p_coeff,
                                                                               past_data=LP3past_choices,
                                                                               weight_sum=weight_sum)

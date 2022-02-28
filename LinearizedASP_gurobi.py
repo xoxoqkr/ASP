@@ -491,7 +491,7 @@ def ReviseCoeffAP3(selected, others, org_coeff, past_data = [], Big_M = 100000, 
     # D.V. and model set.
     m = gp.Model("mip1")
     w = m.addVars(len(org_coeff), lb = -2, vtype=GRB.CONTINUOUS, name="w")
-    y = m.addVar(lb = -1000, ub=Big_M, vtype=GRB.CONTINUOUS, name="y")
+    y = m.addVar(lb = -100000, ub=Big_M, vtype=GRB.CONTINUOUS, name="y")
     #y = m.addVars(1 + len(past_data), max_data_size, ub = Big_M, vtype = GRB.CONTINUOUS, name= "y")
     #Objective Function
     m.setObjective(y, GRB.MAXIMIZE)
@@ -512,6 +512,10 @@ def ReviseCoeffAP3(selected, others, org_coeff, past_data = [], Big_M = 100000, 
         #print('compare',selected,other_info)
         m.addConstr(gp.quicksum((w[i])*selected[i]*weight_direction[i] for i in coeff_indexs) >=
                     gp.quicksum((w[j])*other_info[j]*weight_direction[j] for j in coeff_indexs) + y , name = 'c6-'+str(Constr_count))
+        print('자료',list(org_coeff),list(selected[:3]),list(other_info[:3]))
+        tem1 = numpy.dot(org_coeff,list(selected[:3]))
+        tem2 = numpy.dot(org_coeff,list(other_info[:3]))
+        print('LP3 비교',tem1,'>=',tem2)
         error_term_index += 1
         Constr_count += 1
     dummy_index += 1

@@ -171,6 +171,11 @@ class Rider(object):
             #print('고를 수 있는 고객 들 수',len(ava_cts_class))
             print('T {} 라이더 {}선택 시점의 설정 {} {} {}'.format(self.env.now, self.name, toCenter, pref, value_cal_type))
             priority_orders = PriorityOrdering(self, ava_cts_class, toCenter = toCenter, who = pref, save_info = save_info, rider_route_cal_type = value_cal_type)
+            print('세팅2 toCenter:{} / who:{}/rider_route_cal_type :{}/last_loc:{}/LP_type :{}'.format(toCenter,
+                                                                                                    pref,
+                                                                                                    value_cal_type,
+                                                                                                    self.last_location,
+                                                                                                    '원래 coeff'))
             priority_orders_biggerthan1 = []
             for info in priority_orders:
                 customer_set[info[0]].considered = True
@@ -364,12 +369,13 @@ def CheckTimeFeasiblity(veh, customer, customers, toCenter = True, rider_route_c
     now_time = round(veh.env.now, 1)
     if rider_route_cal_type == 'return':
         if who == 'test_platform':
-            rev_last_location = veh.now_ct[1]
+            #rev_last_location = veh.now_ct[1]
+            rev_last_location = veh.exp_last_location
             time = CalTime2(rev_last_location, veh.speed, customer, center=[25,25], toCenter=toCenter,customer_set=customers)
-            #print('플랫폼 시점의 라이더 위치{}:: 고객이름{} ::복귀{} ::시간{}'.format(rev_last_location, customer.name,  [25,25],time))
+            print('플랫폼 시점의 라이더 위치1{}:: 고객이름{} ::복귀{} ::시간{}::who{}'.format(rev_last_location, customer.name,  [25,25],time,who))
         else:
             time = CalTime2(veh.last_location, veh.speed, customer, center=[25,25], toCenter=toCenter,customer_set=customers)
-            #print('라이더 시점의 라이더 위치{}:: 고객이름{} ::복귀{} ::시간{}'.format(veh.last_location,customer.name,  [25,25],time))
+            print('라이더 시점의 라이더 위치2{}:: 고객이름{} ::복귀{} ::시간{}::who{}'.format(veh.last_location,customer.name,  [25,25],time,who))
     elif rider_route_cal_type == 'no_return':
         time = CalTime2(veh.last_location, veh.speed, customer, center=customer.location[1], toCenter=toCenter,
                         customer_set=customers)
@@ -379,6 +385,9 @@ def CheckTimeFeasiblity(veh, customer, customers, toCenter = True, rider_route_c
     elif rider_route_cal_type == 'next_order':
         time = CalTime2(last_location, veh.speed, customer, center=customer.location[1], toCenter=toCenter,
                         customer_set=customers)
+    #elif  rider_route_cal_type == 'for_incentive':
+    #    time = CalTime2(last_location, veh.speed, customer, center=customer.location[0], toCenter=toCenter,
+    #                    customer_set=customers)
     else:
         pass
     cost = (time / 60) * veh.wageForHr
