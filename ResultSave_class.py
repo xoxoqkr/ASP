@@ -200,7 +200,7 @@ def DataSaver4_summary(infos, saved_name = 'None'):
             ,'mean', 'std', 'max', 'min','//' #여기 까지가 single save에 저장되는 것.
               ,'제안된 보조금 수','제안된 보조금 수0-1', '1-2', '2-3', '3-4', '4-5', '5-6', '6-7', '7-8', '8-9', '9-10', '10-11', '11-12', '12-13','13-14', '14-15', '//']
     now = datetime.today().isoformat()
-    file_name = saved_name + now[5:7] + "-" + now[8:10] + "-" + now[11:13] + "-" + now[14:16] + 'res.xlsx'
+    file_name = saved_name + now[5:7] + "-" + now[8:10] + "-" + now[11:13] + "-" + now[14:16] + 'res2.xlsx'
     wb = Workbook()
     wb['Sheet'].title = 'summary'
     sheet_sm = wb['summary']
@@ -210,6 +210,7 @@ def DataSaver4_summary(infos, saved_name = 'None'):
     col = 2
     print('infos check')
     print(infos)
+    #input('데이터 저장 확인')
     master_infos = []
     for sc_infos in infos:
         if sc_infos != []:
@@ -220,6 +221,7 @@ def DataSaver4_summary(infos, saved_name = 'None'):
                     sc_info1.append('//')
                 else:
                     for info in sc_infos:
+                        #print(info)
                         tem.append(info[val_index])
                     try:
                         sc_info1.append(round(sum(tem)/len(tem),2))
@@ -300,8 +302,11 @@ def DataSave(data, RIDER_DICT, CUSTOMER_DICT, insert_thres, speed, run_time,subs
     info += subsidy_offer_count
     #master_info[data_index].append(info)
     # Basic_class.DataSaver4_summary([info])
-    f = open('res/' + data[2] + str(ite) + "mean_" + str(mean_list[ite]) + "std_" + str(
-        std_list[ite]) + "_ite_info_save.txt", 'a')
+    try:
+        f = open('res/' + data[2] + str(ite) + "mean_" + str(mean_list[ite]) + "std_" + str(
+            std_list[ite]) + "_ite_info_save.txt", 'a')
+    except:
+        f = open('res/' + data[2] + str(ite) + "_ite_info_save.txt", 'a')
     for ele in info:
         f.write(str(ele) + '\n')
     f.close()

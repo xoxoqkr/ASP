@@ -7,6 +7,8 @@ import numpy as np
 import LinearizedASP_gurobi as lpg
 import Basic_class as Basic
 import copy
+from ComparedPolicy_class import AllSubsidy
+
 
 def indexReturner2DBiggerThan0(list2D, val = 0):
     """
@@ -250,8 +252,9 @@ def ExpectedSCustomer(rider_set, rider_names, d_orders_res, customer_set, now_ti
             print('라이더 예상 고객은?',rider_name ,"::",test)
     return expected_cts, add_info
 
-def SystemRunner(env, rider_set, customer_set, run_time, interval=10, No_subsidy=False, subsidy_offer=[],
-                 subsidy_offer_count=[], time_thres=0.8, upper=10000, checker=False, toCenter=True, dummy_customer_para = False,weight_sum=3, LP_type = 'LP2'):
+def SystemRunner(env, rider_set, customer_set, run_time, interval=10, subsidy_offer=[],
+                 subsidy_offer_count=[], time_thres=0.8, upper=10000, checker=False, toCenter=True, dummy_customer_para = False,weight_sum=3, LP_type = 'LP2',
+                 subsidy_policy = 'MIP'):
     """
     입력 값에 따라 시뮬레이션 진행
     No_subsidy에 따라 2가지 상황이 가능.
@@ -283,40 +286,45 @@ def SystemRunner(env, rider_set, customer_set, run_time, interval=10, No_subsidy
         expected_cts, dummy = ExpectedSCustomer(rider_set, rider_names, d_orders_res, customer_set, round(env.now,2) , toCenter = toCenter, who = 'platform')
         print('T {} 데이터 확인 급한 고객;{} 예상 선택 고객;{};라이더 선택 순서; {};주문 선택 가능한 라이더들;{}'.format(int(env.now), urgent_cts,expected_cts,d_orders_res,rider_names))
         if sorted(urgent_cts) == sorted(expected_cts) or len(urgent_cts) == 0 or len(rider_names) <= 1 or len(
-                cts_name) <= 1 or No_subsidy == True:
+                cts_name) <= 1 or subsidy_policy == 'nosubsidy':
             print('IP 풀이X', env.now,'급한 고객 수:', len(urgent_cts), '// 예상 매칭 고객 수:', expected_cts)
-            print('가능한 라이더수:', len(rider_names), '//고객 수:', len(cts_name), '//No_subsidy:', No_subsidy)
-            if No_subsidy == False:
-                print('가상 매칭 결과', sorted(urgent_cts), sorted(expected_cts), 'No_subsidy', No_subsidy)
+            print('가능한 라이더수:', len(rider_names), '//고객 수:', len(cts_name), '//No_subsidy:', subsidy_policy)
+            if subsidy_policy == 'nosubsidy':
+                print('가상 매칭 결과', sorted(urgent_cts), sorted(expected_cts), 'No_subsidy', subsidy_policy)
             # 문제를 풀지 않아도 서비스가 필요한 고객들이 모두 서비스 받을 수 있음.
             pass
         else:  # peak para 는 항상 참인 파라메터
-            print('IP 풀이O', env.now,'급한 고객 수:', len(urgent_cts),'급한고객',urgent_cts,'// 예상 매칭 고객 수:', expected_cts, '//라이더 순서', d_orders_res)
-            print('가능한 라이더수:', len(rider_names), '//고객 수:', len(cts_name), '//No_subsidy:', No_subsidy)
-            print('V_old', np.shape(v_old), '//Time:', np.shape(times), '//EndTime:', np.shape(end_times))
-            res, vars = lpg.LinearizedSubsidyProblem(rider_names, cts_name, v_old, d_orders_res, times, end_times,
-                                                     lower_b=0, sp=urgent_cts, print_gurobi=False, upper_b=upper)
-            print('문제 풀림')
-            if res == False:
-                time_con_num = list(range(0, len(urgent_cts)))
-                time_con_num.sort(reverse=True)
-                try_num = 0
-                for num in time_con_num:
-                    res, vars = lpg.LinearizedSubsidyProblem(rider_names, cts_name, v_old, d_orders_res, times,
-                                                             end_times, lower_b=0, sp=urgent_cts, print_gurobi=False,
-                                                             relax=num, upper_b=upper)
-                    try_num += 1
-                    if res != False:
-                        print('Relaxing Try #', time_con_num.index(num))
-                        break
-                print("Try#", try_num, '//So done', len(urgent_cts) - try_num)
-            if res != False:
-                feasibility, res2 = solver_interpreterForIP2(res[1])
-                if feasibility == True:
-                    print('Fee updater')
-                    FeeUpdater(res2, customer_set, rider_names, rider_set, cts_name, env.now,
-                               subsidy_offer=subsidy_offer, subsidy_offer_count=subsidy_offer_count, upper=upper)
-
+            if subsidy_policy == 'step':
+                subsidy_offer, subsidy_offer_count = AllSubsidy(customer_set, env.now, subsidy_offer=subsidy_offer,
+                                                                subsidy_offer_count=subsidy_offer_count)
+            elif subsidy_policy == 'MIP':
+                print('IP 풀이O', env.now,'급한 고객 수:', len(urgent_cts),'급한고객',urgent_cts,'// 예상 매칭 고객 수:', expected_cts, '//라이더 순서', d_orders_res)
+                print('가능한 라이더수:', len(rider_names), '//고객 수:', len(cts_name), '//No_subsidy:', subsidy_policy)
+                print('V_old', np.shape(v_old), '//Time:', np.shape(times), '//EndTime:', np.shape(end_times))
+                res, vars = lpg.LinearizedSubsidyProblem(rider_names, cts_name, v_old, d_orders_res, times, end_times,
+                                                         lower_b=0, sp=urgent_cts, print_gurobi=False, upper_b=upper)
+                print('문제 풀림')
+                if res == False:
+                    time_con_num = list(range(0, len(urgent_cts)))
+                    time_con_num.sort(reverse=True)
+                    try_num = 0
+                    for num in time_con_num:
+                        res, vars = lpg.LinearizedSubsidyProblem(rider_names, cts_name, v_old, d_orders_res, times,
+                                                                 end_times, lower_b=0, sp=urgent_cts, print_gurobi=False,
+                                                                 relax=num, upper_b=upper)
+                        try_num += 1
+                        if res != False:
+                            print('Relaxing Try #', time_con_num.index(num))
+                            break
+                    print("Try#", try_num, '//So done', len(urgent_cts) - try_num)
+                if res != False:
+                    feasibility, res2 = solver_interpreterForIP2(res[1])
+                    if feasibility == True:
+                        print('Fee updater')
+                        FeeUpdater(res2, customer_set, rider_names, rider_set, cts_name, env.now,
+                                   subsidy_offer=subsidy_offer, subsidy_offer_count=subsidy_offer_count, upper=upper)
+            else:
+                pass
         yield env.timeout(interval)
         # 보조금 초기화
         Basic.InitializeSubsidy(customer_set) # 보조금 초기화

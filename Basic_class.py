@@ -125,13 +125,14 @@ class Rider(object):
         self.LP2History = []
         self.LP3History = []
         self.LP3_2History = []
-        self.LP1p_coeff = [0,0,0] #[1,1,1]
-        self.LP2p_coeff = [0,0,0] #[1,1,1]
-        self.LP3p_coeff = [0,0,0] #[1,1,1]
-        self.LP3_2p_coeff = [1,1,1]
+        self.LP1p_coeff = [0.3,0.3,0.3] #[1,1,1]
+        self.LP2p_coeff = [0.3,0.3,0.3] #[1,1,1]
+        self.LP3p_coeff = [0.3,0.3,0.3] #[1,1,1]
+        self.LP3_2p_coeff = [0.3,0.3,0.3]
         self.validations = [0,0,0,0]
         self.validations_detail = [[],[],[],[]]
         self.validations_detail_abs = [[], [], [], []]
+        self.weight_update_function = False
         env.process(self.Runner(env, customer_set, toCenter = toCenter, pref = pref_info, save_info = save_info,
                                 print_para = print_para,coeff_revise_option = coeff_revise_option, weight_sum= weight_sum, Data= Data))
         env.process(self.RiderLeft(left_time))
@@ -229,13 +230,16 @@ class Rider(object):
                     for info in infos:
                         rev_infos.append([info[0],info[2]])
                     """
-                    print('T:{}/ 라이더 {} 고객 없음'.format(int(env.now), self.name))
+                    #print('T:{}/ 라이더 {} 고객 없음'.format(int(env.now), self.name))
                     if pref == 'test_rider' or pref == 'test_platform':
-                        input('갱신 확인1')
                         #self.choice_info.append([int(env.now), ct_name, self.last_location , rev_infos])
                         self.choice_info.append([int(env.now), ct_name, self.last_location, infos])
-                        RiderWeightUpdater(self, customer_set, weight_sum = True, beta=1) #todo 220225 : 라이더가 선택후 각 방식에 의해 rider weighr 갱신 수행
-                        input('갱신 확인2')
+                        if self.weight_update_function == True:
+                            print('갱신 확인1 라이더 {}/LP1{} LP2 {} LP3{}'.format(self.name, self.LP1p_coeff, self.LP2p_coeff,
+                                                                            self.LP3p_coeff))
+                            RiderWeightUpdater(self, customer_set, weight_sum = True, beta=1) #todo 220225 : 라이더가 선택후 각 방식에 의해 rider weighr 갱신 수행
+                            print('라이더 가중치 {}'.format(self.coeff))
+                            print('갱신 확인2 라이더 {}/LP1{} LP2 {} LP3{}'.format(self.name, self.LP1p_coeff, self.LP2p_coeff, self.LP3p_coeff))
                         #print('선택 정보 저장 {}'.format())
                 #print('Rider',self.name,'assign2',ct_name, 'at', env.now)
                 if infos == None:
@@ -287,6 +291,7 @@ class Rider(object):
                         self.fee_analyze[int(env.now // 60)].append(ct.fee[0])
                         self.subsidy_analyze[int(env.now // 60)].append(ct.fee[1])
                     except:
+                        input('fee_analyze 고장')
                         pass
                     self.end_time = end_time
                     print('라이더{}종료시간:{}'.format(self.name, self.end_time))
@@ -584,7 +589,8 @@ def WhoGetPriority(customers , cut, now_time, time_thres = 0.8, print_para = Fal
         required_time = distance(customer.location[0], customer.location[1])/speed + customer.time_info[6] + customer.time_info[7]
         if (customer.time_info[0] + customer.time_info[5] - now_time)*time_thres <= required_time :
         #if now_time - customer.time_info[0] > customer.time_info[5]*time_thres:
-            scores.append([customer.name, customer.time_info[0], index])
+            #scores.append([customer.name, customer.time_info[0], index])
+            scores.append([customer.name, now_time -(customer.time_info[0]+required_time), index])
         index += 1
     if print_para == True:
         print('urgent ct info',scores)

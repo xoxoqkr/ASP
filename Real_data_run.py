@@ -8,6 +8,7 @@ import ValueRevise
 import matplotlib.pyplot as plt
 import random
 import SubsidyPolicy_class
+from ResultSave_class import DataSave
 """
 global type_num
 global std
@@ -21,10 +22,25 @@ global run_ite_num
 global slack1
 """
 
+global weight_update_function
+global subsidy_policy
 
-cost_coeff = round(random.uniform(0.2, 0.45), 2)
-type_coeff = 0.6 - cost_coeff  # round(random.uniform(0.8,1.2),1)
-coeff = [cost_coeff, type_coeff, 0.4]  # [cost_coeff,type_coeff,1.5] #[cost_coeff,type_coeff,1] #[1,1,1]
+global saved_xlxs
+sc_name = str(weight_update_function) + ';' + subsidy_policy
+driver_num = 14
+insert_thres = 1
+mean_list = [0,0,0]
+std_list = [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9]
+rider_coeff_list = []
+for _ in range(driver_num):
+    random.seed(1)
+    cost_coeff = round(random.uniform(0.2, 0.45), 2)
+    type_coeff = 0.6 - cost_coeff  # round(random.uniform(0.8,1.2),1)
+    coeff = [cost_coeff, type_coeff, 0.4]  # [cost_coeff,type_coeff,1.5] #[cost_coeff,type_coeff,1] #[1,1,1]
+    rider_coeff_list.append(coeff)
+
+#weight_update_function = False # /True: 라이더 가중치 갱신 함수 작동  ; False  라이더 가중치 갱신 함수 작동X
+#subsidy_policy = 'step' # 'step' : 계단형 지급 , 'MIP' : 문제 풀이, 'nosubsidy': 보조금 주지 않는 일반 상황
 
 
 type_num = 4
@@ -54,33 +70,32 @@ customer_loc_data = InstanceGen_class.LocDataTransformer('송파구house_Coor.tx
 
 harversion_dist_data = np.load('rev_송파구_Haversine_Distance_data0.npy')
 shortestpath_dist_data = np.load('rev_송파구_shortest_path_Distance_data0.npy')
-customer_gen_numbers = 300
+customer_gen_numbers = 800
 
 #파라메터
 speed = 260 #meter per minute 15.6km/hr
 toCenter = False
 customer_wait_time = 10000
 fee = None
-data_dir = '데이터/new_data_2_RandomCluster'
+data_dir = '데이터/new_data_2_RandomCluster.txt'
 rider_intervals = InstanceGen_class.RiderGenInterval('데이터/interval_rider_data3.csv')
 driver_error_pool = np.random.normal(500, 50, size=100)
 customer_lamda = None
 add_fee = 1500
-driver_left_time = 1000
-driver_make_time = 200
+driver_left_time = 900
+driver_make_time = 800 # todo 20220228:저장되는 데이터를 관리하는 값
 steps = [[]]
-driver_num = 5
 weight_sum = True
 revise_para = True
 ###Running
 solver_running_interval = 10
-upper = 1500 #보조금 상한 지급액
+upper = 500 #todo 20220228: 보조금 상한 지급액
 checker = False
 print_para = True
 dummy_customer_para = False #라이더가 고객을 선택하지 않는 경우의 input을 추가 하는가?
-policy_type = 'subsidy' # 'normal'
 
-run_time = 1000
+
+run_time = 800
 validation_t = 0.7*driver_left_time
 incentive_time = incentive_time_ratio * driver_left_time
 ox_table = [0,0,0,0]
@@ -95,26 +110,26 @@ env.process(InstanceGen_class.DriverMaker(env, RIDER_DICT, CUSTOMER_DICT, end_ti
                                           intervals=rider_intervals[0], interval_para=True, toCenter=toCenter,
                                           run_time=driver_make_time, error=np.random.choice(driver_error_pool), pref_info = 'test_rider',
                                           driver_left_time = driver_left_time, num_gen= driver_num,ExpectedCustomerPreference=ExpectedCustomerPreference,
-                                          rider_coeff=rider_coeff, start_pos = start_pos))
+                                          rider_coeff=rider_coeff_list, start_pos = start_pos, weight_update_function = weight_update_function))
 #env.process(InstanceGen_class.CustomerGeneratorForIP(env, CUSTOMER_DICT, data_dir + '.txt', input_fee=fee, input_loc= input_para,
 #                                                     type_num = type_num, std = std, input_instances= input_instances))
 #env.process(InstanceGen_class.CustomerGeneratorForNPYData(env, CUSTOMER_DICT, store_loc_data, customer_loc_data,harversion_dist_data,shortestpath_dist_data,customer_gen_numbers,
 #                                fee_type = 'harversion',end_time=1000,  basic_fee = 2500,customer_wait_time = 40, lamda = None, type_num = 4))
 env.process(InstanceGen_class.CustomerGeneratorForNPYData2(env, CUSTOMER_DICT, harversion_dist_data,shortestpath_dist_data,customer_gen_numbers,
-                                fee_type = 'harversion',end_time=1000,  basic_fee = 2500,customer_wait_time = 40, lamda = None, type_num = 4))
+                                fee_type = 'harversion',end_time=1000,  basic_fee = 2500,customer_wait_time = 40, lamda = None, type_num = 4, saved_dir = data_dir))
 """
 env.process(ValueRevise.SystemRunner(env, RIDER_DICT, CUSTOMER_DICT, run_time, ox_table, weight_sum = weight_sum, revise = revise_para,
                                      beta = beta, LP_type = LP_type, validation_t = validation_t,incentive_time = incentive_time, slack1 =slack1))
 """
 env.process(SubsidyPolicy_class.SystemRunner(env, RIDER_DICT, CUSTOMER_DICT, run_time, interval=solver_running_interval,
-                                             No_subsidy=policy_type,
                                              subsidy_offer=subsidy_offer, subsidy_offer_count=subsidy_offer_count,
                                              upper=upper,
                                              checker=checker, toCenter=toCenter,
-                                             dummy_customer_para=dummy_customer_para, LP_type = LP_type))
+                                             dummy_customer_para=dummy_customer_para, LP_type = LP_type, subsidy_policy = subsidy_policy))
 
 env.run(until=run_time)
-
+saved_data_info = DataSave(sc_name, RIDER_DICT, CUSTOMER_DICT, insert_thres, speed, run_time, subsidy_offer, subsidy_offer_count, 1, mean_list, std_list)
+saved_xlxs.append([saved_data_info])
 #Save_result
 f = open("결과저장1209_보조금.txt", 'a')
 f.write('저장 {} \n'.format('test'))

@@ -69,7 +69,7 @@ def InputCalculate2(rider, customer_set, index = -1, LP_type = 'LP1'):
         check.append([ct_name, info[1]])
     check.sort(key = operator.itemgetter(1), reverse = True)
     print('Rider',rider.coeff)
-    print('E_Rider', rider.p_coeff)
+    print('E_Rider LP1{} LP2 {} LP3{}'.format(rider.LP1p_coeff, rider.LP2p_coeff, rider.LP3p_coeff))
     print('Rev',rev_infos)
     if rev_infos[0][3] == check[0][0]:
         print('기존 p로 만족하는 데이터')
@@ -568,6 +568,7 @@ def RiderWeightUpdater(rider, customer_set,weight_sum, beta = 1):
     LP1past_choices = []
     LP1_satisfy = True
     LP1_selected_value = np.dot(rider.LP1p_coeff, selected[:len(rider.LP1p_coeff)])
+    print('LP1_selected_value ',LP1_selected_value)
     for other_info in others:
         if LP1_selected_value < np.dot(rider.LP1p_coeff, other_info[:len(rider.LP1p_coeff)]):
             LP1_satisfy = False
@@ -594,6 +595,7 @@ def RiderWeightUpdater(rider, customer_set,weight_sum, beta = 1):
     LP2past_choices = []
     LP2_satisfy = True
     LP2_selected_value = np.dot(rider.LP2p_coeff, selected[:len(rider.LP2p_coeff)])
+    print('LP2_selected_value ', LP2_selected_value)
     for other_info in others:
         if LP2_selected_value < np.dot(rider.LP2p_coeff, other_info[:len(rider.LP2p_coeff)]):
             rider.violated_choice_info.append(copy.deepcopy(len(rider.choice_info)))
@@ -659,7 +661,7 @@ def RiderWeightUpdater(rider, customer_set,weight_sum, beta = 1):
         # LP3feasibility, LP3res, LP3exe_t, LP3_obj = lpg.ReviseCoeffAP3(selected, others, rider.LP3p_coeff,
         #                                                      past_data=LP3past_choices,
         #                                                      weight_sum=weight_sum)
-    input('LP1{},LP2{},LP3{}'.format(LP1_satisfy, LP2_satisfy, LP3_satisfy))
+    #input('LP1{},LP2{},LP3{}'.format(LP1_satisfy, LP2_satisfy, LP3_satisfy))
     if LP1feasibility == True:
         LP1revise_value = 0
         for index in range(len(LP1res)):
