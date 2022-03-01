@@ -16,13 +16,15 @@ global input_para
 global input_instances
 global rider_coeff
 global incentive_time_ratio
+global subsiduyforLP3
+
 
 ExpectedCustomerPreference = []
 inc = int(1000/type_num)
 type_fee = 0
 for _ in range(type_num):
     ExpectedCustomerPreference.append(type_fee)
-    ExpectedCustomerPreference.append(500)
+    #ExpectedCustomerPreference.append(500)
     type_fee += inc
 #input(ExpectedCustomerPreference)
 #ExpectedCustomerPreference = [500,500,500,500,500]
@@ -60,7 +62,7 @@ env.process(InstanceGen_class.DriverMaker(env, RIDER_DICT, CUSTOMER_DICT, end_ti
                                           driver_left_time = driver_left_time, num_gen= driver_num,ExpectedCustomerPreference=ExpectedCustomerPreference,rider_coeff=rider_coeff))
 env.process(InstanceGen_class.CustomerGeneratorForIP(env, CUSTOMER_DICT, data_dir + '.txt', input_fee=fee, input_loc= input_para,
                                                      type_num = type_num, std = std, input_instances= input_instances))
-env.process(ValueRevise.SystemRunner(env, RIDER_DICT, CUSTOMER_DICT, run_time, ox_table, weight_sum = weight_sum, revise = revise_para, beta = beta, LP_type = LP_type, validation_t = validation_t,incentive_time = incentive_time))
+env.process(ValueRevise.SystemRunner(env, RIDER_DICT, CUSTOMER_DICT, run_time, ox_table, weight_sum = weight_sum, revise = revise_para, beta = beta, LP_type = LP_type, validation_t = validation_t,incentive_time = incentive_time,subsiduyforLP3 = subsiduyforLP3))
 env.run(until=run_time)
 
 #Save_result
@@ -77,13 +79,14 @@ for rider_name in RIDER_DICT:
     f.write('고객종류;{};거리 std;{};LP종류;{};beta;{};\n'.format(type_num,std, LP_type,beta))
     f.write('w0;w1;w2;선택한 고객 수; 쌓인 데이터수;사용 데이터 수 ;실행시간;obj;euc거리;\n')
     f.write('라이더#{};org;{};{};{}; \n'.format(rider_name, rider.coeff[0],rider.coeff[1] ,rider.coeff[2]))
-    print('라이더 선호',rider.coeff)
+    print('라이더 선호',rider.coeff, '보조금 작동 여부:',subsiduyforLP3)
     info_name = ['LP1', 'LP2','LP3']
     count = 0
     com_t = [0, 0,0]
     obj = [0,0,0]
     for infos in [rider.LP1History, rider.LP2History, rider.LP3History]:
         print(info_name[count])
+        print(len(rider.correct_num[count]),'::',rider.correct_num[count])
         #print(infos)
         f.write(';{};\n'.format(info_name[count]))
         for info in infos:

@@ -23,20 +23,19 @@ for beta in betas:
             std_input = std
             input_instances = InstanceGen(unit_dist=unit_dist, std=std_input, max_x=max_x, max_y=max_y, gen_n=10000)
             for ite in range(100):
-                cost_coeff = round(random.uniform(0.7,1.1),1)
-                #cost_coeff = round(1.3)
-                #type_coeff = 3 - (1.5 + cost_coeff) #round(random.uniform(0.8,1.2),1)
-                #fee_coeff = 1.5
-                type_coeff = round(random.uniform(0.7,1.1),1)
+                cost_coeff = round(random.uniform(0.6,1.1),1)
+                type_coeff = round(random.uniform(0.6,1.0),1)
                 fee_coeff = 3 - (type_coeff + cost_coeff)
                 coeff = [cost_coeff,type_coeff,fee_coeff] #[cost_coeff,type_coeff,1] #[1,1,1]
+                #coeff = [0.9,0.9,1.2]
                 for LP_type in LP_types:
-                    exec(open('ValueRevise_Run.py', encoding='UTF8').read(),
-                         globals().update(type_num=type_num, std=std_input, LP_type=LP_type, beta=beta, input_para=input_para, input_instances = input_instances,
-                                          rider_coeff = coeff, incentive_time_ratio = incentive_time_ratio))
-                    #exec(open('Combine_Run.py', encoding='UTF8').read(),
-                    #     globals().update(type_num=type_num, std=std_input, LP_type=LP_type, beta=beta,
-                    #                      input_para=input_para, input_instances=input_instances, rider_coeff=coeff, re_new_type = re_new_type))
-                    #input('실행 끝')
-                    print(std_input, type_num, beta)
+                    for subsiduyforLP3 in [True, False]:
+                        exec(open('ValueRevise_Run.py', encoding='UTF8').read(),
+                             globals().update(type_num=type_num, std=std_input, LP_type=LP_type, beta=beta, input_para=input_para, input_instances = input_instances,
+                                              rider_coeff = coeff, incentive_time_ratio = incentive_time_ratio,subsiduyforLP3 = subsiduyforLP3))
+                        #exec(open('Combine_Run.py', encoding='UTF8').read(),
+                        #     globals().update(type_num=type_num, std=std_input, LP_type=LP_type, beta=beta,
+                        #                      input_para=input_para, input_instances=input_instances, rider_coeff=coeff, re_new_type = re_new_type))
+                        #input('실행 끝')
+                        print(std_input, type_num, beta)
                 input('check')

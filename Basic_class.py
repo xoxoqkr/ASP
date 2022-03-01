@@ -125,6 +125,7 @@ class Rider(object):
         self.LP3p_coeff = [0,0,0] #[1,1,1]
         self.LP3_2p_coeff = [1,1,1]
         self.validations = [0,0,0,0]
+        self.correct_num = [[],[],[]]
         env.process(self.Runner(env, customer_set, toCenter = toCenter, pref = pref_info, save_info = save_info, print_para = print_para,coeff_revise_option = coeff_revise_option, weight_sum= weight_sum))
         env.process(self.RiderLeft(left_time))
 
