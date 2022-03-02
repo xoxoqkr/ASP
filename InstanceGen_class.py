@@ -11,13 +11,7 @@ import copy
 def InstanceGen(unit_dist= 8, std = 1, max_x = 50, max_y = 50, gen_n = 100):
     coordinates = []
     pool = np.random.normal(unit_dist, std, size= 10000)
-    """
-    plt.hist(pool, bins=20)
-    plt.show()
-    plt.close()
-    input('pool 확인')    
-    """
-    for counnt in range(gen_n):
+    for count in range(gen_n):
         for try_num in range(1000):
             store_loc = [random.randrange(0, int(max_x / 2)), random.randrange(0, int(max_y / 2))]
             req_dist = random.choice(pool)
@@ -84,7 +78,6 @@ def CustomerGeneratorForIP(env, customer_dict, dir=None, end_time=1000,  custome
             customer_loc = coordinates[int(data[0])][1]
         c = Basic.Customer(env, int(data[0]), input_location = [store_loc, customer_loc], fee= fee, end_time= customer_wait_time, far = int(data[6]),type_num = type_num)
         customer_dict[int(data[0])] = c
-
         #print('Time',round(env.now,2) ,'CT#', c.name, 'gen')
         if lamda == None:
             yield env.timeout(float(data[7]))

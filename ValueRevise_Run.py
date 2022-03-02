@@ -17,6 +17,9 @@ global input_instances
 global rider_coeff
 global incentive_time_ratio
 global subsiduyforLP3
+global selected_nonnegative
+global performance_measure
+
 
 
 ExpectedCustomerPreference = []
@@ -30,7 +33,7 @@ for _ in range(type_num):
 #ExpectedCustomerPreference = [500,500,500,500,500]
 
 #파라메터
-speed = 1
+speed = 3
 toCenter = False
 customer_wait_time = 5
 fee = None
@@ -46,7 +49,7 @@ driver_num = 1
 weight_sum = True
 revise_para = True
 ###Running
-run_time = 300
+run_time = 500
 validation_t = 0.7*driver_left_time
 incentive_time = incentive_time_ratio * driver_left_time
 ox_table = [0,0,0,0]
@@ -62,7 +65,8 @@ env.process(InstanceGen_class.DriverMaker(env, RIDER_DICT, CUSTOMER_DICT, end_ti
                                           driver_left_time = driver_left_time, num_gen= driver_num,ExpectedCustomerPreference=ExpectedCustomerPreference,rider_coeff=rider_coeff))
 env.process(InstanceGen_class.CustomerGeneratorForIP(env, CUSTOMER_DICT, data_dir + '.txt', input_fee=fee, input_loc= input_para,
                                                      type_num = type_num, std = std, input_instances= input_instances))
-env.process(ValueRevise.SystemRunner(env, RIDER_DICT, CUSTOMER_DICT, run_time, ox_table, weight_sum = weight_sum, revise = revise_para, beta = beta, LP_type = LP_type, validation_t = validation_t,incentive_time = incentive_time,subsiduyforLP3 = subsiduyforLP3))
+env.process(ValueRevise.SystemRunner(env, RIDER_DICT, CUSTOMER_DICT, run_time, ox_table, weight_sum = weight_sum,  beta = beta,
+                                     LP_type = LP_type, validation_t = validation_t,incentive_time = incentive_time,subsiduyforLP3 = subsiduyforLP3, selected_nonnegative = selected_nonnegative))
 env.run(until=run_time)
 
 #Save_result
@@ -84,6 +88,7 @@ for rider_name in RIDER_DICT:
     count = 0
     com_t = [0, 0,0]
     obj = [0,0,0]
+    tem_performance_measure = []
     for infos in [rider.LP1History, rider.LP2History, rider.LP3History]:
         print(info_name[count])
         print(len(rider.correct_num[count]),'::',rider.correct_num[count])
@@ -94,6 +99,8 @@ for rider_name in RIDER_DICT:
             try:
                 euc_dist = round(math.sqrt((info[0] - rider.coeff[0]) ** 2 + (info[1] - rider.coeff[1]) ** 2 + (info[2] - rider.coeff[2]) ** 2), 4)
                 content = ';{};{};{};{};{};{};{};{};'.format(info[0], info[1],info[2],info[3],info[4],info[5],info[6],euc_dist)
+                if info_name[count] == LP_type:
+                    tem_performance_measure.append(euc_dist)
                 f.write(content + '\n')
             except:
                 content = ';{};{};{};{};{};{};{};{};'.format(info[0], info[1], info[2], info[3],info[4],info[5],info[6],None)
@@ -123,6 +130,11 @@ for rider_name in RIDER_DICT:
     f2.write(f2_content)
 f.close()
 f2.close()
+if subsiduyforLP3 == True:
+    performance_measure[0].append(tem_performance_measure)
+else:
+    performance_measure[1].append(tem_performance_measure)
+
 #데이터 확인
 """
 print('고객 거리 확인')

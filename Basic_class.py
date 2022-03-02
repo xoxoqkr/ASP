@@ -8,7 +8,7 @@ import simpy
 import math
 import operator
 import copy
-
+import numpy
 
 class Customer(object):
     def __init__(self, env, name, input_location, end_time = 800, ready_time=2, service_time=1, fee = 1000,wait = True, far = 0, type_num = 4):
@@ -170,7 +170,7 @@ class Rider(object):
         if len(ava_cts_class) > 0:
             print('라이더 선택 시점의 라이더 위치{}'.format(self.last_location))
             #print('고를 수 있는 고객 들 수',len(ava_cts_class))
-            print('T {} 라이더 {}선택 시점의 설정 {} {} {}'.format(self.env.now, self.name, toCenter, pref, value_cal_type))
+            print('T {} 라이더 {}선택 시점의 설정 toC{} {} {}'.format(self.env.now, self.name, toCenter, pref, value_cal_type))
             priority_orders = PriorityOrdering(self, ava_cts_class, toCenter = toCenter, who = pref, save_info = save_info, rider_route_cal_type = value_cal_type)
             print('세팅2 toCenter:{} / who:{}/rider_route_cal_type :{}/last_loc:{}/LP_type :{}'.format(toCenter,
                                                                                                     pref,
@@ -193,6 +193,13 @@ class Rider(object):
             if print_para == True:
                 print('라이더::{} 위치 {}::이윤 계산결과{}'.format(self.name, self.last_location, priority_orders))
                 print("라이더::",self.name,"/이윤 정보::",priority_orders_biggerthan1)
+                print_check = []
+                for check_info in priority_orders_biggerthan1:
+                    check2 = -check_info[-1][1]*self.LP3p_coeff[0] - self.expect[check_info[-1][2]]*self.LP3p_coeff[1] + check_info[-1][2]*self.LP3p_coeff[2]
+                    print_check.append(check_info[-1] + [check2])
+                print_check.sort(key=operator.itemgetter(0))
+                for check_info in print_check:
+                    print(check_info)
             if len(priority_orders_biggerthan1) > 0:
                 ct = customer_set[priority_orders_biggerthan1[0][0]]
                 print(self.name, 'selects', ct.name, 'at', self.env.now)
@@ -217,6 +224,9 @@ class Rider(object):
         :param pref: PriorityOrdering에서 가치 함수 계산에 사용되는 방법
         :param save_info: PriorityOrdering에서 주문 정보를 추가적으로 저장할 것인지 선택. True / False
         """
+        self.LP1History.append(copy.deepcopy(self.LP1p_coeff) + [0, 0, 0, 0])
+        self.LP2History.append(copy.deepcopy(self.LP2p_coeff) + [0, 0, 0, 0])
+        self.LP3History.append(copy.deepcopy(self.LP3p_coeff) + [0, 0, 0, 0])
         while self.left == False:
             #print('라이더::', self.name, '시간::',env.now)
             if len(self.veh.put_queue) == 0 and self.wait == False:
@@ -425,6 +435,7 @@ def PriorityOrdering(veh, customers, minus_para = False, toCenter = True, who = 
             save_fee += customer.fee[1]
             if customer.fee[1] > 0:
                 incentive_list.append([customer.name, customer.fee[1]])
+        check_info = [customer.name, cost, customer.type, fee]
         cost2 = 0
         if who == 'platform':
             cost2 = veh.error
@@ -467,6 +478,7 @@ def PriorityOrdering(veh, customers, minus_para = False, toCenter = True, who = 
             res.append([customer.name,round(fee - cost - cost2,4),int(org_cost),int(fee), time,'N/A2',cost, customer.type, save_fee,end_slack_time])
         res[-1].append(cost2)
         res[-1].append(customer.type)
+        res[-1].append(check_info)
     if len(res) > 0:
         if sort_para == True:
             res.sort(key=operator.itemgetter(1), reverse = True)
@@ -490,7 +502,7 @@ def CalTime2(veh_location,veh_speed, customer, center=[25,25], toCenter = True, 
     time = distance(veh_location, customer.location[0]) / veh_speed #자신의 위치에서 가게 까지
     #time += distance(customer.location[0], customer.location[1]) / veh_speed
     t2 = distance(customer.location[0], customer.location[1]) / veh_speed # 가게에서 고객 까지
-    #print('t1:',int(time), 't2:', int(t2))
+    print('t1:',int(time), 't2:', int(t2))
     time += t2
     time += (customer.time_info[6] + customer.time_info[7]) #고객 서비스 시간.
     if toCenter == True:
@@ -501,11 +513,7 @@ def CalTime2(veh_location,veh_speed, customer, center=[25,25], toCenter = True, 
             dist.append([ct.name, distance(customer.location[1], ct.location[0])])
         if len(dist) > 0:
             dist.sort(key=operator.itemgetter(1))
-            time += dist[0][1]/ veh_speed
-            #aveage = []
-            #for info in dist:
-            #    aveage.append(info[1])
-            #time += sum(aveage)/len(aveage)
+            #time += dist[0][1]/ veh_speed #todo : 가장 가까운 지점으로의 귀환을 고려
     return time
 
 

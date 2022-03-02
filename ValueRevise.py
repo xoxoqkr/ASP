@@ -50,7 +50,7 @@ def InputCalculate2(rider, customer_set, index = -1, LP_type = 'rider_org_coeff'
         input('정보 확인 3333; {}'.format(rider.choice_info[index]))
         return [], []
     for info in rider.choice_info[index][3]:
-        #print('정보 확인 1234 ;; {}'.format(info))
+        print('정보 확인 1234 ;; {}'.format(info))
         ct_name = info[0]
         dist_cost = info[6]/divider[0]
         #try:
@@ -307,24 +307,37 @@ def IncentiveForValueWeightExpectationLP3(rider, customer_set, LP_type = 'LP3', 
     print('세팅1 toCenter:{} / who:{}/rider_route_cal_type :{}/last_loc:{}/LP_type :{}'.format(False,'test_platform','return',rider.exp_last_location,LP_type))
     print('예상 1등 주문', infos[0])
     print('구분자1', rider.last_location, '예측', rider.exp_last_location)
+    print_check = []
+    for check_info in infos:
+        print_check.append(check_info[-1])
+    print_check.sort(key=operator.itemgetter(0))
+    for check_info in print_check:
+        print(check_info)
     print_res = []
     ct_names = []
     if len(infos) > 1:
-        print('자료1',rider.LP3p_coeff)
         selected_value = infos[0][1]
         for info in infos[1:]:
             diff = selected_value - info[1]
+            if LP_type == 'LP1':
+                divider = rider.LP1p_coeff
+            elif LP_type == 'LP2':
+                divider = rider.LP2p_coeff
+            else:
+                divider = rider.LP3p_coeff
+            print('자료1', divider)
             try:
-                required_incentive = float(diff) / rider.LP3p_coeff[2] #todo 0223:index 확인
+                required_incentive = diff / divider[2] #todo 0223:index 확인
                 #print('diff', diff, selected_value, info[1],required_incentive)
-                if 0 < required_incentive < upper and rider.LP3p_coeff[2] > 0:
+                if 0 < required_incentive < upper and divider[2] > 0:
                     customer_set[info[0]].fee[1] = required_incentive
                     customer_set[info[0]].fee[2] = 'all'
                     print_res.append([info[0], required_incentive, customer_set[info[0]].time_info])
                     ct_names.append(info[0])
-                    print('비교',round(selected_value),'::', round(info[1] + required_incentive*rider.LP3p_coeff[2]))
-                    print(infos[0])
-                    print(info)
+                    print('비교4',selected_value,'::', info[1] + required_incentive*divider[2], '차이', int(selected_value - (info[1] + required_incentive*divider[2])),'고객',infos[0][0],'vs',info[0])
+                    #print(selected_value - info[1] - required_incentive*rider.LP3p_coeff[2])
+                    #print(infos[0])
+                    #print(info)
             except:
                 pass
     ct_names.sort()
@@ -336,7 +349,7 @@ def IncentiveForValueWeightExpectationLP3(rider, customer_set, LP_type = 'LP3', 
 
 
 def SystemRunner(env, rider_set, customer_set, cool_time, ox_table ,interval=10, checker = False, toCenter = True, rider_route_cal_type = 'return',
-                 weight_sum = False, revise = False, beta = 0, LP_type = 'LP1', validation_t = 600, incentive_time = 200, subsiduyforLP3 = True):
+                 weight_sum = False, beta = 0, LP_type = 'LP1', validation_t = 600, incentive_time = 200, subsiduyforLP3 = True, selected_nonnegative = True):
     # 보조금 부문을 제외하고 단순하게 작동하는 것으로 시험해 볼 것.
     while env.now <= cool_time:
         #플랫폼이 예상한 라이더-고객 선택
@@ -352,8 +365,10 @@ def SystemRunner(env, rider_set, customer_set, cool_time, ox_table ,interval=10,
             rider = rider_set[rider_name]
             if env.now < rider.end_time <= env.now + interval and env.now < incentive_time:
                 print('라이더 :{} ; 고객 선택 시점 :{}; 현재 시점 :{}'.format(rider.name, rider.end_time, int(env.now)))
+                #IncentiveForValueWeightExpectationLP3(rider, customer_set, LP_type='LP3', now_t=env.now)  # todo: 보조금 계산
                 if subsiduyforLP3 == True:
-                    IncentiveForValueWeightExpectationLP3(rider, customer_set, LP_type='LP3', now_t= env.now) #todo: 보조금 계산
+                    IncentiveForValueWeightExpectationLP3(rider, customer_set, LP_type=LP_type, now_t= env.now) #todo: 보조금 계산
+                    pass
         yield env.timeout(interval)
         now = round(env.now, 1)
         print('과거 {} ~ 현재 시점 {}// 라이더 선택들{}'.format(now - interval, now, rider_set[0].choice))
@@ -421,7 +436,7 @@ def SystemRunner(env, rider_set, customer_set, cool_time, ox_table ,interval=10,
 
                     # LP1도 기존의 해가 만족하지 못할 때 수행
                     LP1past_choices = []
-                    LP1_satisfy = True
+                    #LP1_satisfy = True
                     LP1_selected_value = np.dot(rider.LP1p_coeff,selected[:len(rider.LP1p_coeff)])
                     for other_info in others:
                         if LP1_selected_value < np.dot(rider.LP1p_coeff,other_info[:len(rider.LP1p_coeff)]):
@@ -431,7 +446,7 @@ def SystemRunner(env, rider_set, customer_set, cool_time, ox_table ,interval=10,
                             #rider.validations[0] += 1
                             pass
                     if env.now <= incentive_time:
-                        LP1_satisfy = False #todo : LP#은 계속 작동하도록
+                        LP1_satisfy = False #todo :0302 LP#은 계속 작동하도록
                     if LP1_satisfy == True:
                         rider.correct_num[0].append(len(rider.choice_info))
                         LP1feasibility = False
@@ -446,7 +461,7 @@ def SystemRunner(env, rider_set, customer_set, cool_time, ox_table ,interval=10,
                                                                               weight_sum=weight_sum)
                     #LP2블럭
                     LP2past_choices = []
-                    LP2_satisfy = True
+                    #LP2_satisfy = True
                     LP2_selected_value = np.dot(rider.LP2p_coeff,selected[:len(rider.LP2p_coeff)])
                     for other_info in others:
                         if LP2_selected_value < np.dot(rider.LP2p_coeff,other_info[:len(rider.LP2p_coeff)]):
@@ -456,6 +471,7 @@ def SystemRunner(env, rider_set, customer_set, cool_time, ox_table ,interval=10,
                         else:
                             #rider.validations[1] += 1
                             pass
+                    LP2_satisfy = False #todo 0302: 매번 LP2 수행
                     if LP2_satisfy == True:
                         LP2feasibility = False
                         rider.correct_num[1].append(len(rider.choice_info))
@@ -508,7 +524,7 @@ def SystemRunner(env, rider_set, customer_set, cool_time, ox_table ,interval=10,
                         print('구분자2', rider.last_location, '예측', rider.exp_last_location)
                         LP3feasibility, LP3res, LP3exe_t, LP3_obj = lpg.ReviseCoeffAP3(selected, others, rider.LP3p_coeff,
                                                                               past_data=LP3past_choices,
-                                                                              weight_sum=weight_sum)
+                                                                              weight_sum=weight_sum,selected_nonnegative = selected_nonnegative)
                     if LP1feasibility == True:
                         LP1revise_value = 0
                         for index in range(len(LP1res)):
@@ -536,24 +552,6 @@ def SystemRunner(env, rider_set, customer_set, cool_time, ox_table ,interval=10,
                             rider.LP3History.append(copy.deepcopy(rider.LP3p_coeff) + [copy.deepcopy(len(rider.choice)), len(LP3past_choices)] + [LP3exe_t, LP3_obj])
                     if LP3feasibility == False:
                         input('LP3 불가능')
-                    """
-                    if LP3_2feasibility == True:
-                        LP3_2revise_value = 0
-                        for index in range(len(LP3_2res)):
-                            rider.LP3_2p_coeff[index] = LP3_2res[index]
-                            LP3_2revise_value = 1
-                        if LP3_2revise_value > 0:
-                            #input('LP3 기록')
-                            rider.LP3_2History.append(copy.deepcopy(rider.LP3_2p_coeff) + [copy.deepcopy(len(rider.choice)), len(LP3past_choices)] + [LP3_2exe_t, LP3_2_obj])
-                    
-                    #개선한 코드
-                    feasibility, res, exe_t, obj,past_data_num = SolverBlock(rider, selected, others, customer_set, weight_sum=True, LP_type='LP1', beta=1)
-                    SolutionSaveBlock(feasibility, res, exe_t, obj, rider, past_data_num, LP_type='LP1')
-                    feasibility, res, exe_t, obj,past_data_num = SolverBlock(rider, selected, others, customer_set, weight_sum=True, LP_type='LP2', beta=1)
-                    SolutionSaveBlock(feasibility, res, exe_t, obj, rider, past_data_num, LP_type='LP2')
-                    feasibility, res, exe_t, obj,past_data_num = SolverBlock(rider, selected, others, customer_set, weight_sum=True, LP_type='LP3', beta=1)
-                    SolutionSaveBlock(feasibility, res, exe_t, obj, rider, past_data_num, LP_type='LP3')                    
-                    """
                     print('원래 결과', rider.coeff)
                     print(LP1feasibility,'LP1:', rider.LP1p_coeff, '에러 확인',sum(rider.LP1p_coeff))
                     print(LP2feasibility,'LP2:', rider.LP2p_coeff, '에러 확인',sum(rider.LP2p_coeff))
@@ -572,6 +570,134 @@ def SystemRunner(env, rider_set, customer_set, cool_time, ox_table ,interval=10,
             input('가치함수 갱신 Sys Run/T:' + str(env.now))
         #input("정보확인1")
 
+
+def SystemRunner_rev(env, rider_set, customer_set, cool_time, ox_table ,interval=10, checker = False, toCenter = True, rider_route_cal_type = 'return',
+                 weight_sum = False, revise = False, beta = 0, LP_type = 'LP1', validation_t = 600, incentive_time = 200, subsiduyforLP3 = True,
+                 selected_nonnegative = True):
+    # 보조금 부문을 제외하고 단순하게 작동하는 것으로 시험해 볼 것.
+    while env.now <= cool_time:
+        #플랫폼이 예상한 라이더-고객 선택
+        un_served_ct = Basic.UnloadedCustomer(customer_set, env.now)
+        ava_rider = Basic.AvaRider(rider_set, env.now)
+        print("시간::",env.now," / 서비스가 필요한 고객 수::", len(un_served_ct), " / interval동안 빈 차량 수::", len(ava_rider))
+        v_old, rider_names, cts_name, d_orders_res, times, end_times = SubsidyPolicy_class.ProblemInput(rider_set, customer_set, env.now)  # 문제의 입력 값을 계산
+        print("선택순서", d_orders_res)
+        expected_cts, platform_expected = SubsidyPolicy_class.ExpectedSCustomer(rider_set, rider_names, d_orders_res, customer_set, round(env.now, 2), toCenter=toCenter,
+                                                                                who='test_platform', rider_route_cal_type = rider_route_cal_type) # platform_expected = [[라이더 이름, 고객 이름],...,]
+        #platform_expected = [[rider_name, 고객 이름],...,]
+        for rider_name in rider_set:
+            rider = rider_set[rider_name]
+            if env.now < rider.end_time <= env.now + interval and env.now < incentive_time:
+                print('라이더 :{} ; 고객 선택 시점 :{}; 현재 시점 :{}'.format(rider.name, rider.end_time, int(env.now)))
+                #IncentiveForValueWeightExpectationLP3(rider, customer_set, LP_type='LP3', now_t=env.now)  # todo: 보조금 계산
+                if subsiduyforLP3 == True:
+                    IncentiveForValueWeightExpectationLP3(rider, customer_set, LP_type='LP3', now_t= env.now) #todo: 보조금 계산
+                    pass
+        yield env.timeout(interval)
+        now = round(env.now, 1)
+        print('과거 {} ~ 현재 시점 {}// 라이더 선택들{}'.format(now - interval, now, rider_set[0].choice))
+        print('플랫폼이 예상한 라이더 선택 고객', expected_cts, platform_expected)
+        #선택된 라이더들에 대한 가치 함수 갱신
+        actual_choice = RiderChoiceWithInterval(rider_set, rider_names, now, interval=interval)
+        expectation, actual = Comapre2List(platform_expected, actual_choice, ox_table)
+        #ox_table_save
+        print("차이발생/T now:",now,"/예상한 선택", expectation , "/실제 선택", actual, "/실제선택2:",actual_choice)
+        if env.now > validation_t:
+            if len(rider.choice_info) > 0 and env.now - interval <= rider.choice_info[-1][0]:
+                print('R{} T:{}~{}에 고객 {} 선택'.format(rider_name, int(env.now - interval), int(env.now),
+                                                     rider.choice_info[-1]))
+                #input('주문 선택')
+                selected, others = InputCalculate2(rider, customer_set,divider = [rider.coeff[0],rider.coeff[2]])  # 실제 라이더가 선택한 고객의 [-dist_cost, -type_cost, fee]
+                rider.validations[3] += 1
+                LP1_res = True
+                LP1_selected_value = np.dot(rider.LP1p_coeff, selected[:len(rider.LP1p_coeff)])
+                for other_info in others:
+                    if LP1_selected_value < np.dot(rider.LP1p_coeff, other_info[:len(rider.LP1p_coeff)]):
+                        LP1_res = False
+                        break
+                if LP1_res == True:
+                    rider.validations[0] += 1
+                LP2_res = True
+                LP2_selected_value = np.dot(rider.LP2p_coeff, selected[:len(rider.LP2p_coeff)])
+                for other_info in others:
+                    if LP2_selected_value < np.dot(rider.LP2p_coeff, other_info[:len(rider.LP2p_coeff)]):
+                        LP2_res = False
+                        break
+                if LP2_res == True:
+                    rider.validations[1] += 1
+                LP3_res = True
+                LP3_selected_value = np.dot(rider.LP3p_coeff, selected[:len(rider.LP3p_coeff)])
+                for other_info in others:
+                    if LP3_selected_value < np.dot(rider.LP3p_coeff, other_info[:len(rider.LP3p_coeff)]):
+                        LP3_res = False
+                        break
+                if LP3_res == True:
+                    rider.validations[2] += 1
+        else:
+            print('시작 확인') #todo : 가치 가중치 계산
+            for rider_name in rider_set:
+                rider = rider_set[rider_name]
+                print('라이더:',rider.name)
+                #print(rider.choice_info)
+                if len(rider.choice_info) > 0 and env.now - interval <= rider.choice_info[-1][0]:
+                    print('R{} T:{}~{}에 고객 {} 선택'.format(rider_name, int(env.now - interval), int(env.now), rider.choice_info[-1]))
+                    selected, others = InputCalculate2(rider, customer_set, divider = [rider.coeff[0],rider.coeff[2]])  # 실제 라이더가 선택한 고객의 [-dist_cost, -type_cost, fee]
+                    indexs = list(range(len(rider.choice_info) - 1))
+                    indexs.reverse()
+                    #LP3블럭
+                    LP3past_choices = []
+                    LP3_satisfy = True
+                    LP3_selected_value = np.dot(rider.LP3p_coeff,selected[:len(rider.LP3p_coeff)])
+                    check_list = [LP3_selected_value]
+                    for other_info in others:
+                        check_list.append(np.dot(rider.LP3p_coeff, other_info[:len(rider.LP3p_coeff)]))
+                        if LP3_selected_value < np.dot(rider.LP3p_coeff,other_info[:len(rider.LP3p_coeff)]):
+                            LP3_satisfy = False
+                            break
+                        else:
+                            #rider.validations[2] += 1
+                            pass
+                    if env.now <= incentive_time:
+                        LP3_satisfy = False #todo : LP#은 계속 작동하도록
+                    #input('선택 보조금 확인 {}'.format(check_list))
+                    if LP3_satisfy == True:
+                        LP3feasibility = False
+                        rider.correct_num[2].append(len(rider.choice_info))
+                    else:
+                        for index1 in indexs:
+                            past_select, past_others = InputCalculate2(rider, customer_set, index=index1,divider = [rider.coeff[0],rider.coeff[2]],
+                                                                       LP_type='LP3')  # 실제 라이더가 선택할 시점의 [-dist_cost, -type_cost, fee]
+                            if len(past_others) > 0:
+                                LP3past_choices.append([past_select, past_others])
+                            else:
+                                print(past_others)
+                                #input('길이0')
+                        print('구분자2', rider.last_location, '예측', rider.exp_last_location)
+                        LP3feasibility, LP3res, LP3exe_t, LP3_obj = lpg.ReviseCoeffAP3(selected, others, rider.LP3p_coeff,
+                                                                              past_data=LP3past_choices,
+                                                                              weight_sum=weight_sum,selected_nonnegative = selected_nonnegative)
+                    if LP3feasibility == True:
+                        LP3revise_value = 0
+                        for index in range(len(LP3res)):
+                            rider.LP3p_coeff[index] = LP3res[index]
+                            LP3revise_value = 1
+                        if LP3revise_value > 0:
+                            print('LP3 기록')
+                            rider.LP3History.append(copy.deepcopy(rider.LP3p_coeff) + [copy.deepcopy(len(rider.choice)), len(LP3past_choices)] + [LP3exe_t, LP3_obj, int(env.now)])
+                    if LP3feasibility == False:
+                        input('LP3 불가능')
+                    print('원래 결과', rider.coeff)
+                    print(LP3feasibility,'LP3:', rider.LP3p_coeff, '에러 확인',sum(rider.LP3p_coeff))
+            #print('예상과 동일한 선택 수행/ T:{}'.format(int(env.now)))
+        # 보조금 초기화
+        Basic.InitializeSubsidy(customer_set)  # 보조금 초기화
+        Basic.DefreezeAgent(rider_set, type='rider')  # 라이더 반영
+        Basic.DefreezeAgent(customer_set, type='customer')  # 고객 반영
+        if checker == False:
+            print('가치함수 갱신 Sys Run/T:' + str(env.now))
+        else:
+            input('가치함수 갱신 Sys Run/T:' + str(env.now))
+        #input("정보확인1")
 
 """
 def SystemRunner2(env, rider_set, customer_set, cool_time, init_coeff = [0.5,0.5], interval=10, checker = False):
