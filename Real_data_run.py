@@ -8,6 +8,7 @@ import ValueRevise
 import matplotlib.pyplot as plt
 import random
 import SubsidyPolicy_class
+from AssignPSolver import customers
 from ResultSave_class import DataSave
 """
 global type_num
@@ -26,15 +27,19 @@ global weight_update_function
 global subsidy_policy
 
 global saved_xlxs
+global driver_num
 sc_name = str(weight_update_function) + ';' + subsidy_policy
-driver_num = 14
+#driver_num = 13
 insert_thres = 1
 mean_list = [0,0,0]
 std_list = [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9]
 rider_coeff_list = []
+
+random.seed(1)
 for _ in range(driver_num):
-    random.seed(1)
-    cost_coeff = round(random.uniform(0.2, 0.45), 2)
+    #cost_coeff = round(random.uniform(0.2, 0.45), 2)
+    #cost_coeff = random.choice([0.2,0.25,0.3,0.35,0.4,0.45])
+    cost_coeff = 0.4
     type_coeff = 0.6 - cost_coeff  # round(random.uniform(0.8,1.2),1)
     coeff = [cost_coeff, type_coeff, 0.4]  # [cost_coeff,type_coeff,1.5] #[cost_coeff,type_coeff,1] #[1,1,1]
     rider_coeff_list.append(coeff)
@@ -45,7 +50,7 @@ for _ in range(driver_num):
 
 type_num = 4
 std = 1
-LP_type = 'LP2'
+LP_type = 'LP3'
 beta = 1
 input_para = False
 input_instances = None
@@ -58,8 +63,8 @@ ExpectedCustomerPreference = []
 inc = int(1000/type_num)
 type_fee = 0
 for _ in range(type_num):
-    ExpectedCustomerPreference.append(type_fee)
     type_fee += inc
+    ExpectedCustomerPreference.append(type_fee)
 
 # 실제 데이터 처리 부
 #1 가게 데이터
@@ -75,7 +80,7 @@ customer_gen_numbers = 800
 #파라메터
 speed = 260 #meter per minute 15.6km/hr
 toCenter = False
-customer_wait_time = 10000
+customer_wait_time = 90
 fee = None
 data_dir = '데이터/new_data_2_RandomCluster.txt'
 rider_intervals = InstanceGen_class.RiderGenInterval('데이터/interval_rider_data3.csv')
@@ -89,7 +94,7 @@ weight_sum = True
 revise_para = True
 ###Running
 solver_running_interval = 10
-upper = 500 #todo 20220228: 보조금 상한 지급액
+upper = 1000 #todo 20220228: 보조금 상한 지급액
 checker = False
 print_para = True
 dummy_customer_para = False #라이더가 고객을 선택하지 않는 경우의 input을 추가 하는가?
@@ -116,18 +121,41 @@ env.process(InstanceGen_class.DriverMaker(env, RIDER_DICT, CUSTOMER_DICT, end_ti
 #env.process(InstanceGen_class.CustomerGeneratorForNPYData(env, CUSTOMER_DICT, store_loc_data, customer_loc_data,harversion_dist_data,shortestpath_dist_data,customer_gen_numbers,
 #                                fee_type = 'harversion',end_time=1000,  basic_fee = 2500,customer_wait_time = 40, lamda = None, type_num = 4))
 env.process(InstanceGen_class.CustomerGeneratorForNPYData2(env, CUSTOMER_DICT, harversion_dist_data,shortestpath_dist_data,customer_gen_numbers,
-                                fee_type = 'harversion',end_time=1000,  basic_fee = 2500,customer_wait_time = 40, lamda = None, type_num = 4, saved_dir = data_dir))
+                                fee_type = 'harversion',end_time=1000,  basic_fee = 2500,customer_wait_time = customer_wait_time, lamda = None, type_num = type_num, saved_dir = data_dir))
 """
 env.process(ValueRevise.SystemRunner(env, RIDER_DICT, CUSTOMER_DICT, run_time, ox_table, weight_sum = weight_sum, revise = revise_para,
                                      beta = beta, LP_type = LP_type, validation_t = validation_t,incentive_time = incentive_time, slack1 =slack1))
 """
+
+
 env.process(SubsidyPolicy_class.SystemRunner(env, RIDER_DICT, CUSTOMER_DICT, run_time, interval=solver_running_interval,
                                              subsidy_offer=subsidy_offer, subsidy_offer_count=subsidy_offer_count,
                                              upper=upper,
                                              checker=checker, toCenter=toCenter,
                                              dummy_customer_para=dummy_customer_para, LP_type = LP_type, subsidy_policy = subsidy_policy))
 
+
+
 env.run(until=run_time)
+print('고객 거리 확인')
+dists = []
+f_c = open(sc_name + 'ctinfo.txt','a')
+for ct_name in CUSTOMER_DICT:
+    ct = CUSTOMER_DICT[ct_name]
+    #print(ct_name,ct.location)
+    dist = Basic.distance(ct.location[0],ct.location[1])
+    dists.append(dist)
+    print(ct_name, ct.location, dist, ct.type)
+    test_c = '{};{};{};{}; \n'.format(ct.name, ct.location[0], ct.location[1], ct.type)
+    f_c.write(test_c)
+f_c.close()
+
+#plt.hist(dists, bins= 20)
+#plt.show()
+#plt.close()
+
+#input('확인')
+
 saved_data_info = DataSave(sc_name, RIDER_DICT, CUSTOMER_DICT, insert_thres, speed, run_time, subsidy_offer, subsidy_offer_count, 1, mean_list, std_list)
 saved_xlxs.append([saved_data_info])
 #Save_result
@@ -215,3 +243,11 @@ plt.hist(dists, bins= 20)
 plt.show()
 plt.close()
 """
+ave_dist = []
+fee_dist = []
+for customer_name in CUSTOMER_DICT:
+    ct = CUSTOMER_DICT[customer_name]
+    if ct.done == True:
+        ave_dist.append(Basic.distance(ct.location[0], ct.location[1]))
+        fee_dist.append(ct.fee_base_dist)
+print('서비스된 고객 수 {} : 평균 거리 {} : 수수료 기준 거리 {}'.format(len(ave_dist), sum(ave_dist)/len(ave_dist), sum(fee_dist)/len(fee_dist)))

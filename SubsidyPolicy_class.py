@@ -42,7 +42,7 @@ def FeeUpdater(rev_v, customer_set, riders, rider_set ,cts_name, now_time, subsi
             rider = rider_set[rider_name]
             customer = customer_set[cts_name[info[1]]]
             if info[2] < upper and customer.name > 0:
-                customer.fee[1] = info[2] + 10
+                customer.fee[1] = info[2] + 5
                 customer.fee[2] = rider.name
                 customer.fee[3] = now_time
                 subsidy_offer.append([rider.name, customer.name])

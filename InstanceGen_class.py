@@ -159,7 +159,7 @@ def CustomerGeneratorForNPYData(env, customer_dict, store_loc_data, customer_loc
 
 
 def CustomerGeneratorForNPYData2(env, customer_dict, harversion_dist_data,shortestpath_dist_data,gen_numbers,
-                                fee_type = 'harversion',end_time=1000,  basic_fee = 2500,customer_wait_time = 40, lamda = None, type_num = 4, saved_dir = None):
+                                fee_type = 'harversion',end_time=1000,  basic_fee = 2500,customer_wait_time = 40, type_num = 4, lamda = None, saved_dir = None):
     """
     주어진 입력 값에 대한 고객을 생성. 아래 요인들이 중요
     -배송비 책정
@@ -188,20 +188,37 @@ def CustomerGeneratorForNPYData2(env, customer_dict, harversion_dist_data,shorte
     else:
         for _ in range(gen_numbers):
             lamdas.append(3)
+    name = 0
     for num in range(0,gen_numbers):
         if fee_type == 'shortest_path':
             ODdist = shortestpath_dist_data[num,num]
         else:
             ODdist = harversion_dist_data[num,num]
         fee = round(int(ODdist*10) * 100, 2) + basic_fee  # 2500 #ODdist 는 키로미터
-        print('거리{} 수수료{}'.format(ODdist,fee))
+        print('거리{} 수수료{} 주문 종류 {}// SP거리:{} 직선거리:{}'.format(ODdist,fee, type_num, round(shortestpath_dist_data[num,num],4),round(harversion_dist_data[num,num],4)))
+        if round(shortestpath_dist_data[num,num],4) < round(harversion_dist_data[num,num],4):
+            pass
+            #input('확인')
         far_para = 0
         if ODdist >= 3:
             far_para = 1
-        c = Basic.Customer(env, num, input_location=[num, num], fee=fee,
-                           end_time=customer_wait_time, far=far_para, type_num=type_num)
-        customer_dict[num] = c
-        yield env.timeout(lamdas[num])
+        random.seed(num)
+        try:
+            cal_type_num = random.choice(list(range(type_num)))
+        except:
+            print(type_num)
+            input('확인2')
+        SP_dist = shortestpath_dist_data[num,num]
+        c = Basic.Customer(env, name, input_location=[num, num], fee=fee,
+                           end_time=customer_wait_time, far=far_para, type_num=cal_type_num)
+        c.fee_base_dist = ODdist
+        if ODdist > SP_dist or SP_dist == 0:
+            yield env.timeout(0.1)
+            pass
+        else:
+            customer_dict[name] = c
+            name += 1
+            yield env.timeout(lamdas[name])
         """
         if lamdas == None:
             yield env.timeout(3)

@@ -9,7 +9,7 @@ import math
 import operator
 import copy
 import numpy as np
-from ValueRevise import RiderWeightUpdater
+from ValueRevise import RiderWeightUpdater, RiderWeightUpdater2
 
 
 global shortest_path_data_np
@@ -17,7 +17,7 @@ shortest_path_data_np = np.load('rev_송파구_shortest_path_Distance_data0.npy'
 
 
 class Customer(object):
-    def __init__(self, env, name, input_location, end_time = 800, ready_time=2, service_time=1, fee = 1000,wait = True, far = 0, type_num = 4):
+    def __init__(self, env, name, input_location, end_time = 800, ready_time=2, service_time=3, fee = 1000,wait = True, far = 0, type_num = 4):
         """
         고객 class
         :param env: simpy Environment
@@ -45,7 +45,9 @@ class Customer(object):
         self.wait = wait
         self.far = far
         self.error = 0
-        self.type = random.choice(list(range(type_num))) #[0,1,2,3]#random.randrange(1,end_type) #random.randrange(1,end_type)
+        #self.type = random.choice(list(range(type_num))) #[0,1,2,3]#random.randrange(1,end_type) #random.randrange(1,end_type)
+        self.type = type_num
+        self.fee_base_dist = 0
         env.process(self.Decline(env))
 
     def Decline(self, env, slack = 10):
@@ -61,7 +63,7 @@ class Customer(object):
 
 
 class Rider(object):
-    def __init__(self, env, name, speed, customer_set, wageForHr = 9000, wait = True, toCenter = True, run_time = 900, error = 0,
+    def __init__(self, env, name, speed, customer_set, wageForHr = 10000, wait = True, toCenter = True, run_time = 900, error = 0,
                  ExpectedCustomerPreference = [0,250,500,750], pref_info = 'None', save_info = False, left_time = 120, print_para = False,
                  start_pos = [26,26], value_cal_type = 'return',coeff_revise_option = False, weight_sum = False, Data = None):
         """
@@ -127,7 +129,7 @@ class Rider(object):
         self.LP3_2History = []
         self.LP1p_coeff = [0.3,0.3,0.3] #[1,1,1]
         self.LP2p_coeff = [0.3,0.3,0.3] #[1,1,1]
-        self.LP3p_coeff = [0.3,0.3,0.3] #[1,1,1]
+        self.LP3p_coeff = [0.4,0.3,0.3] #[1,1,1]
         self.LP3_2p_coeff = [0.3,0.3,0.3]
         self.validations = [0,0,0,0]
         self.validations_detail = [[],[],[],[]]
@@ -237,7 +239,8 @@ class Rider(object):
                         if self.weight_update_function == True:
                             print('갱신 확인1 라이더 {}/LP1{} LP2 {} LP3{}'.format(self.name, self.LP1p_coeff, self.LP2p_coeff,
                                                                             self.LP3p_coeff))
-                            RiderWeightUpdater(self, customer_set, weight_sum = True, beta=1) #todo 220225 : 라이더가 선택후 각 방식에 의해 rider weighr 갱신 수행
+                            #RiderWeightUpdater(self, customer_set, weight_sum = True, beta=1) #todo 220225 : 라이더가 선택후 각 방식에 의해 rider weighr 갱신 수행
+                            RiderWeightUpdater2(self, customer_set, weight_sum= True, LP_type='LP3', trigger_type='Always')
                             print('라이더 가중치 {}'.format(self.coeff))
                             print('갱신 확인2 라이더 {}/LP1{} LP2 {} LP3{}'.format(self.name, self.LP1p_coeff, self.LP2p_coeff, self.LP3p_coeff))
                         #print('선택 정보 저장 {}'.format())
@@ -335,7 +338,7 @@ class Rider(object):
                     self.end_time = env.now + wait_time
                     self.idle_times[0].append(wait_time)  #수행할 주문이 없는 경우
                     yield self.env.timeout(wait_time)
-                    #print('Rider', self.name, '유효 주문X at', int(env.now),"/이득이 되는 주문 수", type(infos))
+                    print('Rider', self.name, '유효 주문X at', int(env.now),"/이득이 되는 주문 수", type(infos))
                     if type(infos) == list:
                         print("이득이 되는 주문 수",len(infos))
             else:
@@ -624,11 +627,12 @@ def distance(p1, p2):
         customer_max_index = np.shape(shortest_path_data_np)[1]
         if p1 > store_max_index or p2 > customer_max_index:
             print('거꾸로 필요',p1,'=<', store_max_index, '::',p2,'=<', customer_max_index)
-            #input('error')
+            input('error')
         try:
             res = float(shortest_path_data_np[p1,p2]*1000)
         except:
             res = float(shortest_path_data_np[p2, p1] * 1000)
+            input('거리 에러')
     return res
 
 
