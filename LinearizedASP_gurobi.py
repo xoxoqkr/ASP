@@ -10,7 +10,7 @@ import numpy
 
 
 
-def LinearizedSubsidyProblem(driver_set, customers_set, v_old, ro, times, end_times, lower_b = False, upper_b = False, sp=None, print_gurobi=False,  solver=-1, delta = 200, relax = 100, min_subsidy = 0):
+def LinearizedSubsidyProblem(driver_set, customers_set, v_old, ro, times, end_times, fee_weights = [],lower_b = False, upper_b = False, sp=None, print_gurobi=False,  solver=-1, delta = 1, relax = 100, min_subsidy = 0):
     """
     선형화된 버전의 보조금 문제
     :param driver_set: 가능한 라이더 수
@@ -24,6 +24,7 @@ def LinearizedSubsidyProblem(driver_set, customers_set, v_old, ro, times, end_ti
     :param solver: gurobi의 solver engine 선택 [-1,0,1,2]
     :return: 해
     """
+    #print('fee_weights',fee_weights)
     drivers = list(range(len(driver_set)))
     customers = list(range(len(customers_set)))
     driver_num = len(driver_set)
@@ -52,13 +53,14 @@ def LinearizedSubsidyProblem(driver_set, customers_set, v_old, ro, times, end_ti
     req_sp_num = min(len(driver_set), len(sp), relax)
     #print("Priority Customer", rev_sp)
     # Set objective #29
-    m.setObjective(gp.quicksum(v[i, j] for i in drivers for j in customers), GRB.MINIMIZE)
+    m.setObjective(gp.quicksum(v[i, j]/fee_weights[i] for i in drivers for j in customers), GRB.MINIMIZE)
     #32
     """
     for i in drivers:
         for j in customers:
             m.addConstr(gp.quicksum(w[i, k] + v_old[i, k] * x[i, k] for k in customers) >= z[i, j] + v_old[i, j] * y[i, j])
     """
+    m.addConstrs(x[i,j]*(v_old[i,j] + v[i,j]) >= 0 for i in drivers for j in customers) #todo: 선택한 주문에 대한 비음 제약식.
     m.addConstrs(gp.quicksum(w[i,k] + v_old[i,k]*x[i,k] for k in customers) >= z[i,j] + v_old[i,j]*y[i,j] + delta for i in drivers for j in customers)
     #33
     m.addConstrs( w[i,j]-v[i,j ]<= upper_b*(1-x[i,j]) for i in drivers for j in customers)
@@ -86,7 +88,8 @@ def LinearizedSubsidyProblem(driver_set, customers_set, v_old, ro, times, end_ti
     #44
     m.addConstrs(b[i, j] <= (driver_num)*x[i,j] for i in drivers for j in customers)
     #45
-    m.addConstr(gp.quicksum(x[i, j] for i in drivers for j in rev_sp) >= req_sp_num)
+    #m.addConstr(gp.quicksum(x[i, j] for i in drivers for j in rev_sp) >= req_sp_num)
+    m.addConstr(gp.quicksum(x[i, j] for i in drivers for j in rev_sp) >= min(req_sp_num,len(driver_set)))
     #46
     m.addConstrs(gp.quicksum(x[i, j] for j in customers) == 1 for i in drivers)
     #m.addConstrs(gp.quicksum(x[i, j] for j in customers) <= 1 for i in drivers)
@@ -103,7 +106,7 @@ def LinearizedSubsidyProblem(driver_set, customers_set, v_old, ro, times, end_ti
             if lower_b != False:
                 m.addConstr(lower_b <= v[i, j])
             if upper_b != False:
-                m.addConstr(v[i, j] <= upper_b)
+                m.addConstr(v[i, j]/fee_weights[i] <= upper_b)
     if print_gurobi == False:
         m.setParam(GRB.Param.OutputFlag, 0)
     m.Params.method = solver  # -1은 auto dedection이며, 1~5에 대한 차이.

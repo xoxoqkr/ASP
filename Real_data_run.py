@@ -25,10 +25,11 @@ global slack1
 
 global weight_update_function
 global subsidy_policy
-
+global upper
 global saved_xlxs
 global driver_num
-sc_name = str(weight_update_function) + ';' + subsidy_policy
+
+sc_name = str(weight_update_function) + ';' + subsidy_policy + ';' + str(upper)
 #driver_num = 13
 insert_thres = 1
 mean_list = [0,0,0]
@@ -38,8 +39,8 @@ rider_coeff_list = []
 random.seed(1)
 for _ in range(driver_num):
     #cost_coeff = round(random.uniform(0.2, 0.45), 2)
-    #cost_coeff = random.choice([0.2,0.25,0.3,0.35,0.4,0.45])
-    cost_coeff = 0.4
+    cost_coeff = random.choice([0.2,0.25,0.3,0.35,0.4,0.45])
+    #cost_coeff = 0.4
     type_coeff = 0.6 - cost_coeff  # round(random.uniform(0.8,1.2),1)
     coeff = [cost_coeff, type_coeff, 0.4]  # [cost_coeff,type_coeff,1.5] #[cost_coeff,type_coeff,1] #[1,1,1]
     rider_coeff_list.append(coeff)
@@ -73,9 +74,9 @@ store_loc_data = InstanceGen_class.LocDataTransformer('송파구store_Coor.txt',
 customer_loc_data = InstanceGen_class.LocDataTransformer('송파구house_Coor.txt', index = 0)
 #customer_loc_data += InstanceGen_class.LocDataTransformer('송파구commercial_Coor.txt', index = len(customer_loc_data))
 
-harversion_dist_data = np.load('rev_송파구_Haversine_Distance_data0.npy')
-shortestpath_dist_data = np.load('rev_송파구_shortest_path_Distance_data0.npy')
-customer_gen_numbers = 800
+harversion_dist_data = np.load('송파구_test0311_Haversine_Distance_data0.npy')
+shortestpath_dist_data = np.load('송파구_test0311_shortest_path_Distance_data0.npy')
+customer_gen_numbers = 350
 
 #파라메터
 speed = 260 #meter per minute 15.6km/hr
@@ -94,7 +95,7 @@ weight_sum = True
 revise_para = True
 ###Running
 solver_running_interval = 10
-upper = 1000 #todo 20220228: 보조금 상한 지급액
+#upper = 10000 #todo 20220228: 보조금 상한 지급액
 checker = False
 print_para = True
 dummy_customer_para = False #라이더가 고객을 선택하지 않는 경우의 input을 추가 하는가?
@@ -121,7 +122,7 @@ env.process(InstanceGen_class.DriverMaker(env, RIDER_DICT, CUSTOMER_DICT, end_ti
 #env.process(InstanceGen_class.CustomerGeneratorForNPYData(env, CUSTOMER_DICT, store_loc_data, customer_loc_data,harversion_dist_data,shortestpath_dist_data,customer_gen_numbers,
 #                                fee_type = 'harversion',end_time=1000,  basic_fee = 2500,customer_wait_time = 40, lamda = None, type_num = 4))
 env.process(InstanceGen_class.CustomerGeneratorForNPYData2(env, CUSTOMER_DICT, harversion_dist_data,shortestpath_dist_data,customer_gen_numbers,
-                                fee_type = 'harversion',end_time=1000,  basic_fee = 2500,customer_wait_time = customer_wait_time, lamda = None, type_num = type_num, saved_dir = data_dir))
+                                fee_type = 'harversion',end_time=1000,  basic_fee =2500,customer_wait_time = customer_wait_time, lamda = None, type_num = type_num, saved_dir = data_dir))
 """
 env.process(ValueRevise.SystemRunner(env, RIDER_DICT, CUSTOMER_DICT, run_time, ox_table, weight_sum = weight_sum, revise = revise_para,
                                      beta = beta, LP_type = LP_type, validation_t = validation_t,incentive_time = incentive_time, slack1 =slack1))

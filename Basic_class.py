@@ -13,7 +13,7 @@ from ValueRevise import RiderWeightUpdater, RiderWeightUpdater2
 
 
 global shortest_path_data_np
-shortest_path_data_np = np.load('rev_송파구_shortest_path_Distance_data0.npy')
+shortest_path_data_np = np.load('송파구_test0311_shortest_path_Distance_data0.npy')
 
 
 class Customer(object):
@@ -129,7 +129,7 @@ class Rider(object):
         self.LP3_2History = []
         self.LP1p_coeff = [0.3,0.3,0.3] #[1,1,1]
         self.LP2p_coeff = [0.3,0.3,0.3] #[1,1,1]
-        self.LP3p_coeff = [0.4,0.3,0.3] #[1,1,1]
+        self.LP3p_coeff = [cost_coeff,type_coeff,0.4] #[0.4,0.3,0.3] #[1,1,1]
         self.LP3_2p_coeff = [0.3,0.3,0.3]
         self.validations = [0,0,0,0]
         self.validations_detail = [[],[],[],[]]
@@ -382,10 +382,10 @@ def CheckTimeFeasiblity(veh, customer, customers, toCenter = True, rider_route_c
         if who == 'test_platform':
             rev_last_location = veh.now_ct[1]
             time = CalTime2(rev_last_location, veh.speed, customer, center=init_center, toCenter=toCenter,customer_set=customers)
-            #print('플랫폼 시점의 라이더 위치{}:: 고객이름{} ::복귀{} ::시간{}'.format(rev_last_location, customer.name,  [25,25],time))
+            #print('플랫폼 시점의 라이더 위치1 {}:: 고객이름{} ::복귀{} ::시간{}'.format(rev_last_location, customer.name,  [25,25],time))
         else:
             time = CalTime2(veh.last_location, veh.speed, customer, center=init_center, toCenter=toCenter,customer_set=customers)
-            #print('라이더 시점의 라이더 위치{}:: 고객이름{} ::복귀{} ::시간{}'.format(veh.last_location,customer.name,  [25,25],time))
+            #print('라이더 시점의 라이더 위치2 {}:: 고객이름{} ::복귀{} ::시간{}'.format(veh.last_location,customer.name,  [25,25],time))
     elif rider_route_cal_type == 'no_return':
         time = CalTime2(veh.last_location, veh.speed, customer, center=customer.location[1], toCenter=toCenter,
                         customer_set=customers)
@@ -464,7 +464,8 @@ def PriorityOrdering(veh, customers, minus_para = False, toCenter = True, who = 
         end_slack_time = veh.env.now - (customer.time_info[0] + customer.time_info[5] + 10)
         if time_para == True:
             if minus_para == True:
-                res.append([customer.name, max(0,int(fee - cost - cost2)), int(org_cost), int(fee), time, 'Profit1',cost, customer.type,save_fee,end_slack_time],)
+                res.append([customer.name, max(0,int(fee - cost - cost2)), int(org_cost), int(fee), time, 'Profit1',cost, customer.type,save_fee,end_slack_time])
+                #res.append([customer.name, int(fee - cost - cost2), int(org_cost), int(fee), time, 'Profit1',cost, customer.type,save_fee,end_slack_time],)
             elif fee > cost + cost2 :
                 res.append([customer.name, int(fee - cost - cost2), int(org_cost), int(fee), time, 'Profit2',cost, customer.type,save_fee,end_slack_time])
             else:
@@ -475,6 +476,8 @@ def PriorityOrdering(veh, customers, minus_para = False, toCenter = True, who = 
             res.append([customer.name,int(fee - cost - cost2),int(org_cost),int(fee), time,'N/A2',cost, customer.type, save_fee,end_slack_time])
         res[-1].append(cost2)
         res[-1].append(customer.type)
+        res[-1].append(who)
+        res[-1].append(LP_type)
     if len(res) > 0:
         if sort_para == True:
             res.sort(key=operator.itemgetter(1), reverse = True)
@@ -590,9 +593,7 @@ def WhoGetPriority(customers , cut, now_time, time_thres = 0.8, print_para = Fal
     for customer in customers:
         test.append(int(now_time - customer.time_info[0]))
         required_time = distance(customer.location[0], customer.location[1])/speed + customer.time_info[6] + customer.time_info[7]
-        if (customer.time_info[0] + customer.time_info[5] - now_time)*time_thres <= required_time :
-        #if now_time - customer.time_info[0] > customer.time_info[5]*time_thres:
-            #scores.append([customer.name, customer.time_info[0], index])
+        if (customer.time_info[0] + customer.time_info[5] - now_time)*time_thres <= required_time and customer.cancelled == False:
             scores.append([customer.name, now_time -(customer.time_info[0]+required_time), index])
         index += 1
     if print_para == True:

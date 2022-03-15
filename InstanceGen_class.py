@@ -290,9 +290,13 @@ def DriverMaker(env, driver_dict, customer_set ,speed = 2, end_time = 800, inter
                 #input('라이더 갱신 성공')
             except:
                 input('라이더 갱신 실패')
-        rider.weight_update_function = weight_update_function
+        #rider.weight_update_function = weight_update_function
         if rider_coeff != None:
             rider.coeff = rider_coeff[name]
+            if weight_update_function == True:
+                rider.LP3p_coeff = rider_coeff[name] #todo: 0315 LP3 실험을 위한 장치
+            else:
+                pass
         driver_dict[name] = rider
         if interval_para == False:
             #print('Hr',intervals[int(env.now//60)])
