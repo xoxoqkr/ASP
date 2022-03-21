@@ -9,7 +9,7 @@ import math
 import operator
 import copy
 import numpy as np
-from ValueRevise import RiderWeightUpdater, RiderWeightUpdater2
+from ValueRevise import RiderWeightUpdater, RiderWeightUpdater2,IncentiveForValueWeightExpectationLP3
 
 
 global shortest_path_data_np
@@ -41,7 +41,7 @@ class Customer(object):
         self.done = False
         self.cancelled = False
         self.server_info = None
-        self.fee = [fee, 0, None, None] # [기본 요금, 지급된 보조금, 할당된 라이더]
+        self.fee = [fee, 0, None, None]# [기본 요금, 지급된 보조금, 할당된 라이더]
         self.wait = wait
         self.far = far
         self.error = 0
@@ -135,6 +135,7 @@ class Rider(object):
         self.validations_detail = [[],[],[],[]]
         self.validations_detail_abs = [[], [], [], []]
         self.weight_update_function = False
+        self.subsidyForweight = False
         env.process(self.Runner(env, customer_set, toCenter = toCenter, pref = pref_info, save_info = save_info,
                                 print_para = print_para,coeff_revise_option = coeff_revise_option, weight_sum= weight_sum, Data= Data))
         env.process(self.RiderLeft(left_time))
@@ -225,7 +226,16 @@ class Rider(object):
             #print('라이더::', self.name, '시간::',env.now)
             if len(self.veh.put_queue) == 0 and self.wait == False:
                 #print('Rider', self.name, 'assign1 at', env.now)
+                if self.subsidyForweight == True:
+                    IncentiveForValueWeightExpectationLP3(self, customer_set, LP_type='LP3', upper=1000, slack1=1)
                 ct_name, infos = self.CustomerSelector(customer_set, toCenter = toCenter, pref = pref, save_info = save_info, print_para = True)
+                if self.subsidyForweight == True: #지급된 보조금 초기화
+                    for customer_name in customer_set:
+                        if customer_set[customer_name].fee[2] == ct_name:
+                            pass
+                        else:
+                            customer_set[customer_name].fee[2] = None
+                            customer_set[customer_name].fee[1] = 0
                 if infos != None: #infos == None인 경우에는 고를 고객이 없다는 의미임.
                     """
                     rev_infos = []
@@ -236,7 +246,7 @@ class Rider(object):
                     if pref == 'test_rider' or pref == 'test_platform':
                         #self.choice_info.append([int(env.now), ct_name, self.last_location , rev_infos])
                         self.choice_info.append([int(env.now), ct_name, self.last_location, infos])
-                        if self.weight_update_function == True:
+                        if self.subsidyForweight == True:
                             print('갱신 확인1 라이더 {}/LP1{} LP2 {} LP3{}'.format(self.name, self.LP1p_coeff, self.LP2p_coeff,
                                                                             self.LP3p_coeff))
                             #RiderWeightUpdater(self, customer_set, weight_sum = True, beta=1) #todo 220225 : 라이더가 선택후 각 방식에 의해 rider weighr 갱신 수행
@@ -253,6 +263,7 @@ class Rider(object):
                     else:
                         pass
                 select_time = round(env.now,2)
+
                 if type(ct_name) == int and ct_name > 0:
                     ##라이더 가치함수 갱신이 여기서 수행되어야 함.
                     # 현재 이 라이더가 보고 있는 주문들에 대해서 플랫폼의 문제를 풀고, 이에 대한 답이 다른 경우에 갱신할 필요가 있음.

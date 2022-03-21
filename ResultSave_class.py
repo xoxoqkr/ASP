@@ -27,10 +27,13 @@ def SingleDataSaver(scenario_info, customer_set, driver_set ,thres, speed, now_t
     subsidy_paid_ct_num = 0
     ltd_ave = []
     f_ltd_ave = []
+    s_ltd_ave = []
     ltds = [] #
     f_ltds = [] #음식 대기 시간
+    s_ltds = []
     ltd_val = [0,20,40,60,80,100,120,140,160,180]
     f_val = [0,5,10,15,20,25,30,35]
+    s_val = [0,10,20,30,40,50,60,70,80,90]
     ct_paid_fee = 0
     total_dist = 0
     far_num = 0
@@ -40,15 +43,19 @@ def SingleDataSaver(scenario_info, customer_set, driver_set ,thres, speed, now_t
         ltds.append([])
     for _ in f_val[1:]:
         f_ltds.append([])
+    for _ in s_val[1:]:
+        s_ltds.append([])
     for ct_name in customer_set:
         ct = customer_set[ct_name]
         if ct.done == True and ct.name > 0:
             total_dist += Basic.distance(ct.location[0], ct.location[1])
             ltd = round(ct.time_info[4] - ct.time_info[0],2)
             f_ltd = round(ct.time_info[3] - ct.time_info[2],2)
+            s_ltd = round(ct.time_info[1] - ct.time_info[0],2)
             assigned_time.append(round(ct.time_info[1] - ct.time_info[0],2))
             ltd_ave.append(ltd)
             f_ltd_ave.append(f_ltd)
+            s_ltd_ave.append(s_ltd)
             for index in range(0,len(ltd_val)-1):
                 if ltd_val[index] <= ltd < ltd_val[index + 1]:
                     ltds[index].append(ltd)
@@ -56,6 +63,10 @@ def SingleDataSaver(scenario_info, customer_set, driver_set ,thres, speed, now_t
             for index in range(0,len(f_val)-1):
                 if f_val[index] <= f_ltd < f_val[index + 1]:
                     f_ltds[index].append(f_ltd)
+                    break
+            for index in range(0,len(s_val)-1):
+                if s_val[index] <= s_ltd < s_val[index + 1]:
+                    s_ltds[index].append(s_ltd)
                     break
             ct_paid_fee += (ct.fee[0] + ct.fee[1])
             total_paid_subsidy.append(ct.fee[1])
@@ -72,6 +83,10 @@ def SingleDataSaver(scenario_info, customer_set, driver_set ,thres, speed, now_t
     for t in f_ltds:
         infos.append(len(t))
     infos += [thres, speed]
+    infos.append('//')
+    infos += [np.mean(s_ltd_ave), np.std(s_ltd_ave)]
+    for t in s_ltds:
+        infos.append(len(t))
     infos.append('//')
     infos.append(int(sum(total_paid_subsidy)))
     infos.append(int(sum(total_paid_subsidy)/len(total_paid_subsidy)))
@@ -187,7 +202,7 @@ def DataSaver4_summary(infos, saved_name = 'None'):
     header = ['시나리오명','서비스된 고객수','평균','표준편차','0-20','20-40','40-60','60-80'
               ,'80-100','100-120','120-140','140-160','160~','//'
               ,'음식리드타임','평균','표준변차','0~5','5~10','10~15','15~20','20~25','25~30','30~'
-              ,'thres','라이더 속도','//'
+              ,'thres','라이더 속도','//','발생 후 선택까지 평균','표준변차','0~10','10~20','20~30','30~40','40~50','50~60','60~70','70~80','80~','//'
               ,'지급된 보조금','평균보조금','보조금 지급 받은 주문 건수','//'
               ,'플랫폼 수수료율','플랫폼 수익','라이더 수익','라이더 평균 수익','라이더 시간당 이익','발생 라이더수','플랫폼 순수익(플랫폼 수익-지급된 보조금)','//'
               ,'배송 고객 평균 거리','//','보조금 받은 고객 수0-1','1-2','2-3','3-4'
@@ -269,7 +284,7 @@ def CustomerDataSaver(customer_set, saved_name):
             col += 1
         row += 1
     wb.save(filename=file_name)
-    print(file_name + ' save done')
+    print(file_name + ' save done2')
 
 
 def DataSave(data, RIDER_DICT, CUSTOMER_DICT, insert_thres, speed, run_time,subsidy_offer,subsidy_offer_count,ite,mean_list,std_list):

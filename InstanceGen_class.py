@@ -249,7 +249,7 @@ def DriverMaker(env, driver_dict, customer_set ,speed = 2, end_time = 800, inter
                 toCenter = True, error = 0, run_time = 900, pref_info = None, driver_left_time = 120, print_para = False,
                 start_pos = [26,26], value_cal_type = 'return', num_gen = 10, coeff_revise_option = False, weight_sum = False,
                 ExpectedCustomerPreference = [0,250,500,750], rider_coeff = None, re_new = True, day_count = 0, yesterday_RIDER_DICT = None,
-                weight_update_function = True):
+                weight_update_function = True, exp_rider_coeff = None, subsidyForweight = False):
     """
     주어진 입력값으로 행동하는 라이더를 생성
     :param env: simpy Environment
@@ -295,8 +295,14 @@ def DriverMaker(env, driver_dict, customer_set ,speed = 2, end_time = 800, inter
             rider.coeff = rider_coeff[name]
             if weight_update_function == True:
                 rider.LP3p_coeff = rider_coeff[name] #todo: 0315 LP3 실험을 위한 장치
+                pass
             else:
                 pass
+        if exp_rider_coeff != None:
+            rider.LP3p_coeff = exp_rider_coeff[name]
+            #rider.LP3History.append(rider.LP3p_coeff)
+        if subsidyForweight == True:
+            rider.subsidyForweight = True
         driver_dict[name] = rider
         if interval_para == False:
             #print('Hr',intervals[int(env.now//60)])

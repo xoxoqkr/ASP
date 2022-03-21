@@ -6,7 +6,7 @@ import Basic_class as Basic
 
 
 def AllSubsidy(customer_set: dict, now_time: int,
-               subsidy_info: list = [[0.4, 0.3, 0.1], [0.3, 0.2, 0.2], [0.2, 0.1, 0.3], [0.1, 0, 0.4]],
+               subsidy_info: list = [[0.4, 0.3, 0.1], [0.3, 0.2, 0.2], [0.2, 0.1, 0.3], [0.1, 0.2, 0.4]],
                subsidy_offer: list = [],
                subsidy_offer_count: list = []) -> object:
     """

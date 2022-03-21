@@ -10,7 +10,7 @@ import numpy
 
 
 
-def LinearizedSubsidyProblem(driver_set, customers_set, v_old, ro, times, end_times, fee_weights = [],lower_b = False, upper_b = False, sp=None, print_gurobi=False,  solver=-1, delta = 1, relax = 100, min_subsidy = 0):
+def LinearizedSubsidyProblem(driver_set, customers_set, v_old, ro, times, end_times, fee_weights = [],lower_b = False, upper_b = False, sp=None, print_gurobi=False,  solver=-1, delta = 50, relax = 100, min_subsidy = 0):
     """
     선형화된 버전의 보조금 문제
     :param driver_set: 가능한 라이더 수
@@ -595,9 +595,12 @@ def ReviseCoeffAP3(selected, others, org_coeff, past_data = [], Big_M = 100000, 
         res = []
         for val in m.getVars():
             if val.VarName[0] == 'w':
-                res.append(float(val.x))
-        print('Obj val: %g' % m.objVal)
-        print('Infeasible', res)
+                try:
+                    res.append(float(val.x))
+                except:
+                    pass
+        #print('Obj val: %g' % m.objVal)
+        #print('Infeasible', res)
         return False, None, 0, 0
 
 

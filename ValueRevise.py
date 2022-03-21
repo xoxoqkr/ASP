@@ -388,7 +388,8 @@ def SystemRunner(env, rider_set, customer_set, cool_time, ox_table ,interval=10,
             rider = rider_set[rider_name]
             if env.now < rider.end_time <= env.now + interval and env.now < incentive_time:
                 print('라이더 :{} ; 고객 선택 시점 :{}; 현재 시점 :{}'.format(rider.name, rider.end_time, int(env.now)))
-                IncentiveForValueWeightExpectationLP3(rider, customer_set, LP_type='LP3', slack1 = slack1)
+                #IncentiveForValueWeightExpectationLP3(rider, customer_set, LP_type='LP3', slack1 = slack1)
+                pass
         yield env.timeout(interval)
         now = round(env.now, 1)
         print('과거 {} ~ 현재 시점 {}// 라이더 선택들{}'.format(now - interval, now, rider_set[0].choice))
@@ -844,7 +845,8 @@ def RiderWeightUpdater2(rider, customer_set,weight_sum, LP_type = 'LP3', trigger
     if LP_feasibility == True:
         RiderWeightUpdaterByLPSolution(rider, res, exe_t, obj, LP_type=LP_type, now_t=int(rider.env.now))
     elif LP_feasibility == False:
-        input('{} 불가능해 발생'.format(LP_type))
+        #input('{} 불가능해 발생'.format(LP_type))
+        pass
     else:
         input('LP_Solver 잘못된 입렵 값')
 

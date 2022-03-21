@@ -28,14 +28,22 @@ global subsidy_policy
 global upper
 global saved_xlxs
 global driver_num
+global run_type
+global rider_coeff_list
+global expected_rider_coeff_list
+global output_rider_coeff
+global rider_coeff_para
+global add_file_info
 
-sc_name = str(weight_update_function) + ';' + subsidy_policy + ';' + str(upper)
+
+sc_name = str(weight_update_function) + ';' + subsidy_policy + ';' + str(upper) + ';' + add_file_info
 #driver_num = 13
 insert_thres = 1
 mean_list = [0,0,0]
 std_list = [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9]
-rider_coeff_list = []
 
+"""
+rider_coeff_list = []
 random.seed(1)
 for _ in range(driver_num):
     #cost_coeff = round(random.uniform(0.2, 0.45), 2)
@@ -44,6 +52,8 @@ for _ in range(driver_num):
     type_coeff = 0.6 - cost_coeff  # round(random.uniform(0.8,1.2),1)
     coeff = [cost_coeff, type_coeff, 0.4]  # [cost_coeff,type_coeff,1.5] #[cost_coeff,type_coeff,1] #[1,1,1]
     rider_coeff_list.append(coeff)
+"""
+
 
 #weight_update_function = False # /True: 라이더 가중치 갱신 함수 작동  ; False  라이더 가중치 갱신 함수 작동X
 #subsidy_policy = 'step' # 'step' : 계단형 지급 , 'MIP' : 문제 풀이, 'nosubsidy': 보조금 주지 않는 일반 상황
@@ -55,7 +65,7 @@ LP_type = 'LP3'
 beta = 1
 input_para = False
 input_instances = None
-rider_coeff = coeff
+#rider_coeff = coeff
 incentive_time_ratio = 0.3
 run_ite_num = 1
 slack1 = 1
@@ -103,7 +113,7 @@ dummy_customer_para = False #라이더가 고객을 선택하지 않는 경우�
 
 run_time = 800
 validation_t = 0.7*driver_left_time
-incentive_time = incentive_time_ratio * driver_left_time
+incentive_time = 0 # incentive_time_ratio * driver_left_time
 ox_table = [0,0,0,0]
 subsidy_offer = []
 subsidy_offer_count = [0] * int(math.ceil(run_time / 60))  # [0]* (run_time//60) #[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
@@ -116,24 +126,23 @@ env.process(InstanceGen_class.DriverMaker(env, RIDER_DICT, CUSTOMER_DICT, end_ti
                                           intervals=rider_intervals[0], interval_para=True, toCenter=toCenter,
                                           run_time=driver_make_time, error=np.random.choice(driver_error_pool), pref_info = 'test_rider',
                                           driver_left_time = driver_left_time, num_gen= driver_num,ExpectedCustomerPreference=ExpectedCustomerPreference,
-                                          rider_coeff=rider_coeff_list, start_pos = start_pos, weight_update_function = weight_update_function))
+                                          rider_coeff=rider_coeff_list, start_pos = start_pos, weight_update_function = weight_update_function,
+                                          exp_rider_coeff = expected_rider_coeff_list, subsidyForweight = rider_coeff_para))
 #env.process(InstanceGen_class.CustomerGeneratorForIP(env, CUSTOMER_DICT, data_dir + '.txt', input_fee=fee, input_loc= input_para,
 #                                                     type_num = type_num, std = std, input_instances= input_instances))
 #env.process(InstanceGen_class.CustomerGeneratorForNPYData(env, CUSTOMER_DICT, store_loc_data, customer_loc_data,harversion_dist_data,shortestpath_dist_data,customer_gen_numbers,
 #                                fee_type = 'harversion',end_time=1000,  basic_fee = 2500,customer_wait_time = 40, lamda = None, type_num = 4))
 env.process(InstanceGen_class.CustomerGeneratorForNPYData2(env, CUSTOMER_DICT, harversion_dist_data,shortestpath_dist_data,customer_gen_numbers,
                                 fee_type = 'harversion',end_time=1000,  basic_fee =2500,customer_wait_time = customer_wait_time, lamda = None, type_num = type_num, saved_dir = data_dir))
-"""
-env.process(ValueRevise.SystemRunner(env, RIDER_DICT, CUSTOMER_DICT, run_time, ox_table, weight_sum = weight_sum, revise = revise_para,
-                                     beta = beta, LP_type = LP_type, validation_t = validation_t,incentive_time = incentive_time, slack1 =slack1))
-"""
-
-
-env.process(SubsidyPolicy_class.SystemRunner(env, RIDER_DICT, CUSTOMER_DICT, run_time, interval=solver_running_interval,
-                                             subsidy_offer=subsidy_offer, subsidy_offer_count=subsidy_offer_count,
-                                             upper=upper,
-                                             checker=checker, toCenter=toCenter,
-                                             dummy_customer_para=dummy_customer_para, LP_type = LP_type, subsidy_policy = subsidy_policy))
+if run_type == 'value_revise:':
+    env.process(ValueRevise.SystemRunner(env, RIDER_DICT, CUSTOMER_DICT, run_time, ox_table, weight_sum = weight_sum, revise = revise_para,
+                                         beta = beta, LP_type = LP_type, validation_t = validation_t,incentive_time = incentive_time, slack1 =slack1))
+else:
+    env.process(SubsidyPolicy_class.SystemRunner(env, RIDER_DICT, CUSTOMER_DICT, run_time, interval=solver_running_interval,
+                                                 subsidy_offer=subsidy_offer, subsidy_offer_count=subsidy_offer_count,
+                                                 upper=upper,
+                                                 checker=checker, toCenter=toCenter,
+                                                 dummy_customer_para=dummy_customer_para, LP_type = LP_type, subsidy_policy = subsidy_policy))
 
 
 
@@ -201,7 +210,11 @@ for rider_name in RIDER_DICT:
         f.write('전체예측수;정답수;전체발생수;정답수; \n ')
         f.write('{};{};{};{}; \n '.format(ox_table[0], ox_table[1], ox_table[2],ox_table[3]))
         count += 1
+    #input('라이더 {} 종료 '.format(rider.name))
+    f.write('ORG : {} ; LP3 : {};\n'.format(rider.coeff, rider.LP3p_coeff))
     #f2정보
+    print('coeff확인',rider.coeff, rider.LP1p_coeff, rider.LP2p_coeff, rider.LP3p_coeff)
+    #input('종료확인1')
     euc_dist1 = round(math.sqrt(
         (rider.LP1p_coeff[0] - rider.coeff[0]) ** 2 + (rider.LP1p_coeff[1] - rider.coeff[1]) ** 2 + (rider.LP1p_coeff[2] - rider.coeff[2]) ** 2), 4)
     euc_dist2 = round(math.sqrt(
@@ -231,6 +244,7 @@ f.close()
 f2.close()
 f3.close()
 #데이터 확인
+#input('종료 확인2')
 """
 print('고객 거리 확인')
 dists = []
@@ -252,3 +266,11 @@ for customer_name in CUSTOMER_DICT:
         ave_dist.append(Basic.distance(ct.location[0], ct.location[1]))
         fee_dist.append(ct.fee_base_dist)
 print('서비스된 고객 수 {} : 평균 거리 {} : 수수료 기준 거리 {}'.format(len(ave_dist), sum(ave_dist)/len(ave_dist), sum(fee_dist)/len(fee_dist)))
+ite_range = range(0,30,3)
+if rider_coeff_para == True:
+    for ite in ite_range:
+        tem = []
+        for rider_name in RIDER_DICT:
+            ite1 = min(len(RIDER_DICT[rider_name].LP3History)-1, ite)
+            tem.append(RIDER_DICT[rider_name].LP3History[ite1][:3])
+        output_rider_coeff.append(tem)
