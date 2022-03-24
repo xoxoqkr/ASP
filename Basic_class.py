@@ -42,6 +42,7 @@ class Customer(object):
         self.cancelled = False
         self.server_info = None
         self.fee = [fee, 0, None, None]# [기본 요금, 지급된 보조금, 할당된 라이더]
+        self.fee_t = None
         self.wait = wait
         self.far = far
         self.error = 0
@@ -103,7 +104,7 @@ class Rider(object):
         self.subsidy_analyze = []
         self.choice = []
         self.choice_info = []
-        self.now_ct = [1,1]#[[26,26],[26,26]]
+        self.now_ct = [start_pos, start_pos] #[start_pos, start_pos] # [name, name] # [1,1]#[[26,26],[26,26]]
         self.w_data = []
         for slot_num in range(int(math.ceil(run_time / 60))):
             self.fee_analyze.append([])
@@ -229,7 +230,7 @@ class Rider(object):
                 if self.subsidyForweight == True:
                     IncentiveForValueWeightExpectationLP3(self, customer_set, LP_type='LP3', upper=1000, slack1=1)
                 ct_name, infos = self.CustomerSelector(customer_set, toCenter = toCenter, pref = pref, save_info = save_info, print_para = True)
-                if self.subsidyForweight == True: #지급된 보조금 초기화
+                if self.subsidyForweight == True and ct_name != None: #지급된 보조금 초기화
                     for customer_name in customer_set:
                         if customer_set[customer_name].fee[2] == ct_name:
                             pass
@@ -291,7 +292,8 @@ class Rider(object):
                     ct = customer_set[ct_name]
                     self.now_ct = ct.location
                     self.earn_fee.append(ct.fee[1])
-                    if ct.fee[1] > 0:
+                    if ct.fee[1] > 0 and ct.fee[2] == self.name:
+                        #ct.fee_t = env.now
                         #input('고객{} 보조금{}'.format(ct.name, ct.fee))
                         pass
                     ct.assigned = True

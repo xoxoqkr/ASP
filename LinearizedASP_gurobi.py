@@ -10,7 +10,7 @@ import numpy
 
 
 
-def LinearizedSubsidyProblem(driver_set, customers_set, v_old, ro, times, end_times, fee_weights = [],lower_b = False, upper_b = False, sp=None, print_gurobi=False,  solver=-1, delta = 50, relax = 100, min_subsidy = 0):
+def LinearizedSubsidyProblem(driver_set, customers_set, v_old, ro, times, end_times, fee_weights = [],lower_b = False, upper_b = False, sp=None, print_gurobi=False,  solver=-1, delta = 1, relax = 100, min_subsidy = 0):
     """
     선형화된 버전의 보조금 문제
     :param driver_set: 가능한 라이더 수
@@ -60,7 +60,7 @@ def LinearizedSubsidyProblem(driver_set, customers_set, v_old, ro, times, end_ti
         for j in customers:
             m.addConstr(gp.quicksum(w[i, k] + v_old[i, k] * x[i, k] for k in customers) >= z[i, j] + v_old[i, j] * y[i, j])
     """
-    m.addConstrs(x[i,j]*(v_old[i,j] + v[i,j]) >= 0 for i in drivers for j in customers) #todo: 선택한 주문에 대한 비음 제약식.
+    m.addConstrs(x[i,j]*(v_old[i,j] + v[i,j]) >= 0  for i in drivers for j in customers) #todo: 선택한 주문에 대한 비음 제약식.
     m.addConstrs(gp.quicksum(w[i,k] + v_old[i,k]*x[i,k] for k in customers) >= z[i,j] + v_old[i,j]*y[i,j] + delta for i in drivers for j in customers)
     #33
     m.addConstrs( w[i,j]-v[i,j ]<= upper_b*(1-x[i,j]) for i in drivers for j in customers)

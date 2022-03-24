@@ -6,7 +6,7 @@ import Basic_class as Basic
 
 
 def AllSubsidy(customer_set: dict, now_time: int,
-               subsidy_info: list = [[0.4, 0.3, 0.1], [0.3, 0.2, 0.2], [0.2, 0.1, 0.3], [0.1, 0.2, 0.4]],
+               subsidy_info: list = [[0.4, 0.3, 0.1], [0.3, 0.2, 0.2], [0.2, 0.1, 0.3], [0.1, 0, 0.4]],
                subsidy_offer: list = [],
                subsidy_offer_count: list = []) -> object:
     """
@@ -29,8 +29,11 @@ def AllSubsidy(customer_set: dict, now_time: int,
                 subsidy = ct.fee[0] * info[2]
                 ct.fee[1] = subsidy
                 ct.fee[2] = 'all'
+                ct.fee[3] = now_time
                 subsidy_offer.append(['all', subsidy])
                 subsidy_offer_count[int(now_time // 60)] += 1
+                if ct.fee_t == None:
+                    ct.fee_t = now_time
                 break
     return subsidy_offer, subsidy_offer_count
 

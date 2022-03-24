@@ -10,6 +10,8 @@ import random
 import SubsidyPolicy_class
 from AssignPSolver import customers
 from ResultSave_class import DataSave
+
+
 """
 global type_num
 global std
@@ -23,6 +25,7 @@ global run_ite_num
 global slack1
 """
 
+
 global weight_update_function
 global subsidy_policy
 global upper
@@ -34,6 +37,8 @@ global expected_rider_coeff_list
 global output_rider_coeff
 global rider_coeff_para
 global add_file_info
+global start_pos3
+
 
 
 sc_name = str(weight_update_function) + ';' + subsidy_policy + ';' + str(upper) + ';' + add_file_info
@@ -120,13 +125,13 @@ subsidy_offer_count = [0] * int(math.ceil(run_time / 60))  # [0]* (run_time//60)
 env = simpy.Environment()
 CUSTOMER_DICT = {}
 RIDER_DICT = {}
-start_pos = 1
+#start_pos = 1
 #CUSTOMER_DICT[0] = Basic.Customer(env, 0, input_location=[[36, 36], [36, 36]])
 env.process(InstanceGen_class.DriverMaker(env, RIDER_DICT, CUSTOMER_DICT, end_time=run_time, speed=speed,
                                           intervals=rider_intervals[0], interval_para=True, toCenter=toCenter,
                                           run_time=driver_make_time, error=np.random.choice(driver_error_pool), pref_info = 'test_rider',
                                           driver_left_time = driver_left_time, num_gen= driver_num,ExpectedCustomerPreference=ExpectedCustomerPreference,
-                                          rider_coeff=rider_coeff_list, start_pos = start_pos, weight_update_function = weight_update_function,
+                                          rider_coeff=rider_coeff_list, start_pos = start_pos3, weight_update_function = weight_update_function,
                                           exp_rider_coeff = expected_rider_coeff_list, subsidyForweight = rider_coeff_para))
 #env.process(InstanceGen_class.CustomerGeneratorForIP(env, CUSTOMER_DICT, data_dir + '.txt', input_fee=fee, input_loc= input_para,
 #                                                     type_num = type_num, std = std, input_instances= input_instances))
@@ -150,14 +155,17 @@ env.run(until=run_time)
 print('고객 거리 확인')
 dists = []
 f_c = open(sc_name + 'ctinfo.txt','a')
+f_c.write('{};{}; \n'.format(sc_name, driver_num))
 for ct_name in CUSTOMER_DICT:
     ct = CUSTOMER_DICT[ct_name]
     #print(ct_name,ct.location)
     dist = Basic.distance(ct.location[0],ct.location[1])
     dists.append(dist)
     print(ct_name, ct.location, dist, ct.type)
-    test_c = '{};{};{};{}; \n'.format(ct.name, ct.location[0], ct.location[1], ct.type)
+    ct_t = ct.time_info
+    test_c = '{};{};{};{};{};{};{};{};{};{};{};{};{};{}; \n'.format(ct.name, ct.location[0], ct.location[1], ct.type, ct_t[0],ct_t[1],ct_t[2],ct_t[3],ct_t[4],ct.fee[0],ct.fee[1],ct.fee[2],ct.fee[3],ct.fee_t)
     f_c.write(test_c)
+f_c.write('End \n')
 f_c.close()
 
 #plt.hist(dists, bins= 20)
@@ -167,6 +175,17 @@ f_c.close()
 #input('확인')
 
 saved_data_info = DataSave(sc_name, RIDER_DICT, CUSTOMER_DICT, insert_thres, speed, run_time, subsidy_offer, subsidy_offer_count, 1, mean_list, std_list)
+ave_euc_error = []
+for rider_name in RIDER_DICT:
+    c = RIDER_DICT[rider_name].coeff
+    c1 = RIDER_DICT[rider_name].LP3p_coeff
+    val = math.sqrt((c[0] - c1[0])**2 + (c[1] - c1[1])**2 + (c[2] - c1[2])**2)
+    ave_euc_error.append(val)
+try:
+    ave_euc_error1 = sum(ave_euc_error)/len(ave_euc_error)
+except:
+    ave_euc_error1 = 'None'
+saved_data_info.append(ave_euc_error1)
 saved_xlxs.append([saved_data_info])
 #Save_result
 f = open("결과저장1209_보조금.txt", 'a')
@@ -266,11 +285,29 @@ for customer_name in CUSTOMER_DICT:
         ave_dist.append(Basic.distance(ct.location[0], ct.location[1]))
         fee_dist.append(ct.fee_base_dist)
 print('서비스된 고객 수 {} : 평균 거리 {} : 수수료 기준 거리 {}'.format(len(ave_dist), sum(ave_dist)/len(ave_dist), sum(fee_dist)/len(fee_dist)))
-ite_range = range(0,30,3)
+
+ite_range = range(0,30,5)
 if rider_coeff_para == True:
-    for ite in ite_range:
+    f = open("COEFF Check.txt", 'a')
+    for ite_ in ite_range:
         tem = []
         for rider_name in RIDER_DICT:
-            ite1 = min(len(RIDER_DICT[rider_name].LP3History)-1, ite)
-            tem.append(RIDER_DICT[rider_name].LP3History[ite1][:3])
+            try:
+                ite1 = min(len(RIDER_DICT[rider_name].LP3History)-1, ite_)
+                tem.append(RIDER_DICT[rider_name].LP3History[ite1][:3])
+            except:
+                tem.append(RIDER_DICT[rider_name].LP3p_coeff[:3])
         output_rider_coeff.append(tem)
+        f.write(str(ite_) + 'start1 \n')
+        f.write(str(tem) + '\n')
+    f.write('원 자료 저장 \n')
+    f.close()
+
+f = open("COEFF Check.txt", 'a')
+f.write('start \n')
+for rider_name in RIDER_DICT:
+    c = RIDER_DICT[rider_name].coeff
+    c1 = RIDER_DICT[rider_name].LP3p_coeff
+    content = 'Rider;{};coeff;{};{};{};LP3;{};{};{}; \n'.format(rider_name, c[0],c[1],c[2],c1[0],c1[1],c1[2])
+    f.write(content)
+f.close()

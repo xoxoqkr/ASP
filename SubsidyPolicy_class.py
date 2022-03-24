@@ -56,6 +56,8 @@ def FeeUpdater(rev_v, customer_set, riders, rider_set ,cts_name, now_time, subsi
                 customer.fee[1] = subsidy
                 customer.fee[2] = rider.name
                 customer.fee[3] = now_time
+                if customer.fee_t == None:
+                    customer.fee_t = now_time
                 subsidy_offer.append([rider.name, customer.name])
                 if print_para == True:
                     print('Fee offer to rider#',rider.name,'//end T:', round(rider.end_time,2),'//Rider left t',round(rider.gen_time + 120,2),'//CT #',customer.name,'//CT end T', customer.time_info[0] + customer.time_info[5],'$',customer.fee[0] + customer.fee[1], '//offered$', customer.fee[1])

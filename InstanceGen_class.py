@@ -271,8 +271,14 @@ def DriverMaker(env, driver_dict, customer_set ,speed = 2, end_time = 800, inter
     """
     name = 0
     while env.now < end_time and name < num_gen:
+        print(start_pos)
+        #input('확인1')
+        print(start_pos[name])
+        #input('확인2')
+        start_point = start_pos[name]
+
         rider = Basic.Rider(env, name, speed, customer_set, toCenter = toCenter, error = error, run_time = run_time,
-                            pref_info= pref_info, left_time=driver_left_time, print_para = print_para, start_pos= start_pos,
+                            pref_info= pref_info, left_time=driver_left_time, print_para = print_para, start_pos= start_point,
                             value_cal_type = value_cal_type, coeff_revise_option = coeff_revise_option, weight_sum = weight_sum,
                             ExpectedCustomerPreference = ExpectedCustomerPreference)
         #input('day_count {}, renew{}, yesterday_RIDER_DICT {}'.format(day_count, re_new,yesterday_RIDER_DICT))

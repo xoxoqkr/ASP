@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-from InstanceGen_class import InstanceGen
 import random
 from ResultSave_class import DataSaver4_summary
 import locale
@@ -11,32 +10,54 @@ print(locale.getpreferredencoding())
 weight_update_functions = [True, False]
 scenarios = [[False, 'step'],[False, 'nosubsidy'],[True, 'MIP'],[False, 'MIP']]
 scenarios = [[False, 'step',0],[False, 'nosubsidy',0],[True, 'MIP',0]]
-#scenarios = [[True, 'MIP',0]]
+#scenarios = [[False, 'step',0]]
 #scenarios = []
 added_sc = []
-for i in range(10):
+for i in range(6):
     added_sc.append([False, 'MIP',i])
 scenarios += added_sc
+random.seed(1)
+start_pos2 = []
+for i in range(20):
+    tem = []
+    for _ in range(24):
+        tem.append(int(random.randrange(1,300)))
+    start_pos2.append(tem)
+f = open('start_pos.txt', 'a')
+f.write('start record \n')
+for star_info in start_pos2:
+    f.write(str(star_info) + '\n')
+f.close()
+
+#input('check')
 #driver_nums = list(range(10,15))
+#scenarios = [[False, 'step',0],[False, 'nosubsidy',0],[True, 'MIP',0]]
 driver_nums = [13,16,22]#13,16,22
 #scenarios = [[False, 'MIP']]
-uppers = [1500,2000] #[1500,2000,2500,3000]
+uppers = [1500,2000,2500] #[1500,2000,2500,3000]
 rider_coeff = []
 #saved_infos = []
-
 for upper in uppers:
-    count = 0
     for driver_num in driver_nums:
+        #print('라이더 수 ',driver_num,count)
         saved_infos = []
-        for ite in range(30):
+        count1 = 0
+        for ite_2 in range(5):
+            print('ite ', ite_2, count1)
             #1 라이더 가중치 생성
             rider_coeff_list = []
-            random.seed(count)
-            for _ in range(driver_num):
+            random.seed(count1)
+            f = open('coeff2.txt', 'a')
+            f.write('driver num'+str(driver_num)+'ITE'+str(ite_2)+';'+str(count1)+' \n')
+            for num in range(driver_num):
                 cost_coeff = random.choice([0.2, 0.25, 0.3, 0.35, 0.4, 0.45])
                 type_coeff = 0.6 - cost_coeff  # round(random.uniform(0.8,1.2),1)
                 coeff = [cost_coeff, type_coeff, 0.4]  # [cost_coeff,type_coeff,1.5] #[cost_coeff,type_coeff,1] #[1,1,1]
                 rider_coeff_list.append(coeff)
+                f.write(str(coeff) + '\n')
+                #print(_,coeff)
+            f.write('END \n')
+            f.close()
             ite_rider_coeffs = []
             for info in scenarios:
                 print('시나리오',info)
@@ -53,12 +74,20 @@ for upper in uppers:
                         expected_rider_coeff_list = ite_rider_coeffs[info[2]]
                 else:
                     pass
-                print('시작 이후',run_type,rider_coeff_para,expected_rider_coeff_list,ite_rider_coeffs)
+                print('시작 이후',run_type,rider_coeff_para,expected_rider_coeff_list,ite_rider_coeffs, info)
+                try:
+                    print(start_pos2[ite_2])
+                except:
+                    print(ite_2, len(start_pos2), start_pos2)
+                    input('error')
                 #input('시나리오 확인2')
                 exec(open('Real_data_run.py', encoding='UTF8').read(),
                      globals().update(weight_update_function=info[0],subsidy_policy = info[1], saved_xlxs = saved_infos, driver_num = driver_num, upper = upper,
                                       run_type = run_type,expected_rider_coeff_list = expected_rider_coeff_list, rider_coeff_para = rider_coeff_para,
-                                      rider_coeff_list = rider_coeff_list,output_rider_coeff = ite_rider_coeffs, add_file_info = str(info[2])))
+                                      rider_coeff_list = rider_coeff_list,output_rider_coeff = ite_rider_coeffs, add_file_info = str(info[2]), start_pos3 = start_pos2[ite_2]))
+
+                #input('확인필요')
             DataSaver4_summary(saved_infos)
+            #
             #input('확인필요')
-            count += 1
+            count1 += 1
