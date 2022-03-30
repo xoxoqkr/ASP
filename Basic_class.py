@@ -41,8 +41,9 @@ class Customer(object):
         self.done = False
         self.cancelled = False
         self.server_info = None
-        self.fee = [fee, 0, None, None]# [기본 요금, 지급된 보조금, 할당된 라이더]
+        self.fee = [fee, 0, None, None, None]# [기본 요금, 지급된 보조금, 할당된 라이더, 보조금 type]
         self.fee_t = None
+        self.fee_history = []
         self.wait = wait
         self.far = far
         self.error = 0
@@ -51,7 +52,7 @@ class Customer(object):
         self.fee_base_dist = 0
         env.process(self.Decline(env))
 
-    def Decline(self, env, slack = 10):
+    def Decline(self, env, slack = 0):
         """
         고객이 생성된 후 자신의 종료 시점(end_time)+여유시간(default : 10) 동안 서비스를 받지 못하면 고객을 취소 시킴
         취소된 고객은 더이상 서비스 받을 수 없음. 단, 현재 서비스 받고 있는 경우에는 서비스를 받는 것으로 함.
@@ -90,6 +91,7 @@ class Rider(object):
         self.name = name
         self.veh = simpy.Resource(env, capacity=1)
         self.last_location = start_pos # [26, 26]  # 송파 집중국
+        self.exp_end_pos = start_pos
         self.served = []
         self.speed = speed
         self.wageForHr = wageForHr
@@ -100,15 +102,18 @@ class Rider(object):
         self.end_time = env.now
         self.left = False
         self.earn_fee = []
+        self.total_earn = []
         self.fee_analyze = []
         self.subsidy_analyze = []
         self.choice = []
         self.choice_info = []
         self.now_ct = [start_pos, start_pos] #[start_pos, start_pos] # [name, name] # [1,1]#[[26,26],[26,26]]
         self.w_data = []
+        self.idle_analyze = []
         for slot_num in range(int(math.ceil(run_time / 60))):
             self.fee_analyze.append([])
             self.subsidy_analyze.append([])
+            self.idle_analyze.append([])
         self.exp_last_location = start_pos
         self.error = int(error)
         pref = list(range(1, len(ExpectedCustomerPreference) + 1))
@@ -235,8 +240,11 @@ class Rider(object):
                         if customer_set[customer_name].fee[2] == ct_name:
                             pass
                         else:
-                            customer_set[customer_name].fee[2] = None
-                            customer_set[customer_name].fee[1] = 0
+                            if customer_set[customer_name].time_info[1] == None:
+                                customer_set[customer_name].fee[2] = None
+                                customer_set[customer_name].fee[1] = 0
+                            else:
+                                pass
                 if infos != None: #infos == None인 경우에는 고를 고객이 없다는 의미임.
                     """
                     rev_infos = []
@@ -292,7 +300,9 @@ class Rider(object):
                     ct = customer_set[ct_name]
                     self.now_ct = ct.location
                     self.earn_fee.append(ct.fee[1])
+                    self.total_earn.append(ct.fee[0])
                     if ct.fee[1] > 0 and ct.fee[2] == self.name:
+                        self.total_earn.append(ct.fee[1])
                         #ct.fee_t = env.now
                         #input('고객{} 보조금{}'.format(ct.name, ct.fee))
                         pass
@@ -315,6 +325,7 @@ class Rider(object):
                     #print('Rider', self.name, 'select', ct_name, 'at', env.now, 'EXP T', self.end_time)
                     #print('1:', self.last_location, '2:', ct.location)
                     with self.veh.request() as req:
+                        self.exp_end_pos = ct.location[1]
                         print('라이더 과거 경로',self.past_route[-2:],'고객 경로', ct.location)
                         print('라이더 과거 경로', self.past_route_info[-2:], '고객 경로', ct.location)
                         #print(self.name, 'select', ct.name, 'Time:', env.now)
@@ -350,6 +361,7 @@ class Rider(object):
                 else:
                     self.end_time = env.now + wait_time
                     self.idle_times[0].append(wait_time)  #수행할 주문이 없는 경우
+                    self.idle_analyze[int(env.now//60)].append(1)
                     yield self.env.timeout(wait_time)
                     print('Rider', self.name, '유효 주문X at', int(env.now),"/이득이 되는 주문 수", type(infos))
                     if type(infos) == list:
@@ -590,7 +602,7 @@ def AvaRider(rider_set, now_time,interval = 10):
     return res
 
 
-def WhoGetPriority(customers , cut, now_time, time_thres = 0.8, print_para = False, speed = 1.5):
+def WhoGetPriority(customers , cut, now_time, time_thres = 0.8, print_para = False, speed = 1.5, add_cal = False, riders = None, ava_rider_num = None):
     """
     종료시점이 임박한 고객들에 대하여, 종료시점이 임박한 고객을  cut만큼 반환
     :param customers: [고객 class,...,]
@@ -603,12 +615,43 @@ def WhoGetPriority(customers , cut, now_time, time_thres = 0.8, print_para = Fal
     index = 0
     print('candidates',len(customers),'ava_riders_num', cut)
     test = []
+    added_indexs = []
     for customer in customers:
         test.append(int(now_time - customer.time_info[0]))
         required_time = distance(customer.location[0], customer.location[1])/speed + customer.time_info[6] + customer.time_info[7]
-        if (customer.time_info[0] + customer.time_info[5] - now_time)*time_thres <= required_time and customer.cancelled == False:
-            scores.append([customer.name, now_time -(customer.time_info[0]+required_time), index])
+        # slack = now_time -(customer.time_info[0]+required_time)
+        slack_t = required_time - (customer.time_info[0] + customer.time_info[5] - now_time) * time_thres
+        min_slack_t = (customer.time_info[0] + customer.time_info[5] - now_time) - required_time
+        #slack_t = required_time - (customer.time_info[0] + customer.time_info[5] - now_time) * time_thres
+        if slack_t > 0 and min_slack_t > 0 and customer.cancelled == False:
+            scores.append([customer.name, slack_t, index])
+            added_indexs.append(index)
         index += 1
+    dist_infos = []
+    if add_cal == True:
+        index2 = 0
+        for customer in customers:
+            tem_dsit = []
+            if index2 not in added_indexs:
+                slack_t = (now_time - customer.time_info[0])/customer.time_info[5]
+                for rider_name in riders:
+                    tem_dsit.append(distance(customer.location[0], riders[rider_name].exp_end_pos))
+            if len(tem_dsit) > 0 and customer.cancelled == False:
+                dist_infos.append([customer.name, [np.mean(tem_dsit), max(tem_dsit),min(tem_dsit)], index2,slack_t])
+            index2 += 1
+        dist_infos.sort(key=operator.itemgetter(1), reverse=False)
+    """
+        index2 = 0
+        for customer in customers:
+            tem_dsit = []
+            for ct in customers:
+                if customer.name != ct.name and index2 not in added_indexs:
+                    tem_dsit.append(distance(customer.location[0], ct.location[1]))
+            if len(tem_dsit) > 0 and customer.cancelled == False:
+                dist_infos.append([customer.name, float(max(tem_dsit)), index2])
+            index2 += 1
+        dist_infos.sort(key=operator.itemgetter(1), reverse = True)        
+        """
     if print_para == True:
         print('urgent ct info',scores)
     #print('t test', test)
@@ -619,6 +662,23 @@ def WhoGetPriority(customers , cut, now_time, time_thres = 0.8, print_para = Fal
         for info in scores[:cut]:
             res.append(info[2])
             tem.append(info[0])
+        slack_num = copy.deepcopy(ava_rider_num - len(res))
+        if add_cal == True and slack_num > 0:
+            far_added = []
+            for slack in range(min(slack_num, len(dist_infos))):
+                if 1000 < dist_infos[slack][1][2] < 2000 and slack_t > 0.2:
+                    #res.append(dist_infos[slack][2])
+                    #tem.append(dist_infos[slack][2])
+                    far_added.append(dist_infos[slack])
+                    pass
+            if len(far_added) > 0:
+                print('추가된 정보',far_added)
+                #print(dist_infos[:min(slack_num, len(dist_infos))])
+                #print(res)
+                #input('확인필요7')
+        print(dist_infos[:min(slack_num, len(dist_infos))])
+        print('T {} ; 가능 자리 {} ; 급한 고객 수 {}; 여유 {}'.format(now_time, ava_rider_num, len(res),slack_num))
+        #input('확인필요7')
         return res, tem
     return [], []
 

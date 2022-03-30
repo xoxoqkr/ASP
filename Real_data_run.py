@@ -109,7 +109,7 @@ steps = [[]]
 weight_sum = True
 revise_para = True
 ###Running
-solver_running_interval = 10
+solver_running_interval = 5
 #upper = 10000 #todo 20220228: 보조금 상한 지급액
 checker = False
 print_para = True
@@ -117,7 +117,7 @@ dummy_customer_para = False #라이더가 고객을 선택하지 않는 경우�
 
 
 run_time = 800
-validation_t = 0.7*driver_left_time
+validation_t = 0
 incentive_time = 0 # incentive_time_ratio * driver_left_time
 ox_table = [0,0,0,0]
 subsidy_offer = []
@@ -140,8 +140,9 @@ env.process(InstanceGen_class.DriverMaker(env, RIDER_DICT, CUSTOMER_DICT, end_ti
 env.process(InstanceGen_class.CustomerGeneratorForNPYData2(env, CUSTOMER_DICT, harversion_dist_data,shortestpath_dist_data,customer_gen_numbers,
                                 fee_type = 'harversion',end_time=1000,  basic_fee =2500,customer_wait_time = customer_wait_time, lamda = None, type_num = type_num, saved_dir = data_dir))
 if run_type == 'value_revise:':
-    env.process(ValueRevise.SystemRunner(env, RIDER_DICT, CUSTOMER_DICT, run_time, ox_table, weight_sum = weight_sum, revise = revise_para,
-                                         beta = beta, LP_type = LP_type, validation_t = validation_t,incentive_time = incentive_time, slack1 =slack1))
+    #env.process(ValueRevise.SystemRunner(env, RIDER_DICT, CUSTOMER_DICT, run_time, ox_table, weight_sum = weight_sum, revise = revise_para,
+    #                                     beta = beta, LP_type = LP_type, validation_t = validation_t,incentive_time = incentive_time, slack1 =slack1))
+    pass
 else:
     env.process(SubsidyPolicy_class.SystemRunner(env, RIDER_DICT, CUSTOMER_DICT, run_time, interval=solver_running_interval,
                                                  subsidy_offer=subsidy_offer, subsidy_offer_count=subsidy_offer_count,
@@ -163,7 +164,14 @@ for ct_name in CUSTOMER_DICT:
     dists.append(dist)
     print(ct_name, ct.location, dist, ct.type)
     ct_t = ct.time_info
-    test_c = '{};{};{};{};{};{};{};{};{};{};{};{};{};{}; \n'.format(ct.name, ct.location[0], ct.location[1], ct.type, ct_t[0],ct_t[1],ct_t[2],ct_t[3],ct_t[4],ct.fee[0],ct.fee[1],ct.fee[2],ct.fee[3],ct.fee_t)
+    test_c = '{};{};{};{};{};{};{};{};{};{};{};{};{};{};{};'.format(ct.name, ct.location[0], ct.location[1], ct.type, ct_t[0],ct_t[1],ct_t[2],ct_t[3],ct_t[4],ct.fee[0],ct.fee[1],ct.fee[2],ct.fee[3],ct.fee_t, Basic.distance(ct.location[0], ct.location[1]))
+    #input('확인1')
+    try:
+        min_val = min(ct.fee_history)
+        test_c += (str(min_val) + '; \n')
+    except:
+        test_c += 'None; \n'
+    #input('확인2')
     f_c.write(test_c)
 f_c.write('End \n')
 f_c.close()
@@ -179,13 +187,25 @@ ave_euc_error = []
 for rider_name in RIDER_DICT:
     c = RIDER_DICT[rider_name].coeff
     c1 = RIDER_DICT[rider_name].LP3p_coeff
-    val = math.sqrt((c[0] - c1[0])**2 + (c[1] - c1[1])**2 + (c[2] - c1[2])**2)
+    val = float(math.sqrt((c[0] - c1[0])**2 + (c[1] - c1[1])**2 + (c[2] - c1[2])**2))
     ave_euc_error.append(val)
 try:
-    ave_euc_error1 = sum(ave_euc_error)/len(ave_euc_error)
+    ave_euc_error1 = np.mean(ave_euc_error)
 except:
     ave_euc_error1 = 'None'
 saved_data_info.append(ave_euc_error1)
+f = open("Rider_income"+ sc_name +".txt", 'a')
+f.write('start; '+str(driver_num)+ ';\n')
+f.write('name; r_earing; \n')
+earn_data = ['//']
+for rider_name in RIDER_DICT:
+    r_earing = RIDER_DICT[rider_name].total_earn
+    content = '{};{}; \n'.format(rider_name, sum(r_earing))
+    earn_data.append(sum(r_earing))
+    f.write(content)
+f.close()
+saved_data_info += earn_data
+
 saved_xlxs.append([saved_data_info])
 #Save_result
 f = open("결과저장1209_보조금.txt", 'a')
@@ -311,3 +331,4 @@ for rider_name in RIDER_DICT:
     content = 'Rider;{};coeff;{};{};{};LP3;{};{};{}; \n'.format(rider_name, c[0],c[1],c[2],c1[0],c1[1],c1[2])
     f.write(content)
 f.close()
+

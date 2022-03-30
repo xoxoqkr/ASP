@@ -10,12 +10,12 @@ print(locale.getpreferredencoding())
 weight_update_functions = [True, False]
 scenarios = [[False, 'step'],[False, 'nosubsidy'],[True, 'MIP'],[False, 'MIP']]
 scenarios = [[False, 'step',0],[False, 'nosubsidy',0],[True, 'MIP',0]]
-#scenarios = [[False, 'step',0]]
+scenarios = [[False, 'MIP',0]]
 #scenarios = []
 added_sc = []
 for i in range(6):
     added_sc.append([False, 'MIP',i])
-scenarios += added_sc
+#scenarios += added_sc
 random.seed(1)
 start_pos2 = []
 for i in range(20):
@@ -34,7 +34,7 @@ f.close()
 #scenarios = [[False, 'step',0],[False, 'nosubsidy',0],[True, 'MIP',0]]
 driver_nums = [13,16,22]#13,16,22
 #scenarios = [[False, 'MIP']]
-uppers = [1500,2000,2500] #[1500,2000,2500,3000]
+uppers = [1000,1500,2000,2500] #[1500,2000,2500,3000]
 rider_coeff = []
 #saved_infos = []
 for upper in uppers:
@@ -88,6 +88,7 @@ for upper in uppers:
 
                 #input('확인필요')
             DataSaver4_summary(saved_infos)
+            #input('확인필요')
             #
             #input('확인필요')
             count1 += 1

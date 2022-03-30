@@ -399,6 +399,7 @@ def SystemRunner(env, rider_set, customer_set, cool_time, ox_table ,interval=10,
         expectation, actual = Comapre2List(platform_expected, actual_choice, ox_table)
         #ox_table_save
         print("차이발생/T now:",now,"/예상한 선택", expectation , "/실제 선택", actual, "/실제선택2:",actual_choice)
+
         if env.now > validation_t:
             if len(rider.choice_info) > 0 and env.now - interval <= rider.choice_info[-1][0]:
                 print('R{} T:{}~{}에 고객 {} 선택'.format(rider_name, int(env.now - interval), int(env.now),
@@ -607,6 +608,7 @@ def SystemRunner(env, rider_set, customer_set, cool_time, ox_table ,interval=10,
                         #input('해 확인')
                         pass
             #print('예상과 동일한 선택 수행/ T:{}'.format(int(env.now)))
+
         # 보조금 초기화
         Basic.InitializeSubsidy(customer_set)  # 보조금 초기화
         Basic.DefreezeAgent(rider_set, type='rider')  # 라이더 반영

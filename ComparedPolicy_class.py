@@ -8,7 +8,8 @@ import Basic_class as Basic
 def AllSubsidy(customer_set: dict, now_time: int,
                subsidy_info: list = [[0.4, 0.3, 0.1], [0.3, 0.2, 0.2], [0.2, 0.1, 0.3], [0.1, 0, 0.4]],
                subsidy_offer: list = [],
-               subsidy_offer_count: list = []) -> object:
+               subsidy_offer_count: list = [],
+               speed = 1) -> object:
     """
     subsidy_info에 따라 서비스 받지 못한 고객 모두에게 보조금을 지급
     subsidy_info는 [보조금 지급 시작 구간, 보조금 지급 종료 구간, fee대비 보조금%]이다.
@@ -19,19 +20,55 @@ def AllSubsidy(customer_set: dict, now_time: int,
     :param subsidy_offer_count: 제안된 보조금 수
     """
     customers = Basic.UnloadedCustomer(customer_set, now_time)
-    index, ct_names = Basic.WhoGetPriority(customers, 100, now_time)
+    #index, ct_names = Basic.WhoGetPriority(customers, 100, now_time, time_thres = 0.6 ,speed = speed, ava_rider_num = 100)
+    for customer in customers:
+        ct = customer
+        remain_time = (ct.time_info[0] + ct.time_info[5]) - now_time
+        ratio = remain_time / ct.time_info[5]  # 작아질 수록 촉박함
+        for info in subsidy_info:
+            if info[1] <= ratio < info[0] and ct.cancelled == False:
+                subsidy = ct.fee[0] * info[2]
+                if ct.fee[1] != subsidy:
+                    subsidy_offer.append(['all', subsidy])
+                    subsidy_offer_count[int(now_time // 60)] += 1
+                ct.fee_history.append(now_time)
+                ct.fee[1] = subsidy
+                ct.fee[2] = 'all'
+                ct.fee[3] = now_time
+                if ct.fee_t == None:
+                    ct.fee_t = now_time
+                break
+    return subsidy_offer, subsidy_offer_count
+
+def AllSubsidy_ORG(customer_set: dict, now_time: int,
+               subsidy_info: list = [[0.4, 0.3, 0.1], [0.3, 0.2, 0.2], [0.2, 0.1, 0.3], [0.1, 0, 0.4]],
+               subsidy_offer: list = [],
+               subsidy_offer_count: list = [],
+               speed = 1) -> object:
+    """
+    subsidy_info에 따라 서비스 받지 못한 고객 모두에게 보조금을 지급
+    subsidy_info는 [보조금 지급 시작 구간, 보조금 지급 종료 구간, fee대비 보조금%]이다.
+    :param customer_set: 고객 집합
+    :param now_time: 현재시간
+    :param subsidy_info: 보조금 정보
+    :param subsidy_offer: 제안된 보조금
+    :param subsidy_offer_count: 제안된 보조금 수
+    """
+    customers = Basic.UnloadedCustomer(customer_set, now_time)
+    index, ct_names = Basic.WhoGetPriority(customers, 100, now_time, time_thres = 0 ,speed = speed, ava_rider_num = 100)
     for ct_name in ct_names:
         ct = customer_set[ct_name]
         remain_time = (ct.time_info[0] + ct.time_info[5]) - now_time
         ratio = remain_time / ct.time_info[5]  # 작아질 수록 촉박함
         for info in subsidy_info:
-            if info[1] <= ratio < info[0]:
+            if info[1] <= ratio < info[0] and ct.cancelled == False:
                 subsidy = ct.fee[0] * info[2]
                 ct.fee[1] = subsidy
                 ct.fee[2] = 'all'
                 ct.fee[3] = now_time
                 subsidy_offer.append(['all', subsidy])
                 subsidy_offer_count[int(now_time // 60)] += 1
+                ct.fee_history.append(now_time)
                 if ct.fee_t == None:
                     ct.fee_t = now_time
                 break

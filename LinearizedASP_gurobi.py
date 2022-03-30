@@ -90,6 +90,7 @@ def LinearizedSubsidyProblem(driver_set, customers_set, v_old, ro, times, end_ti
     #45
     #m.addConstr(gp.quicksum(x[i, j] for i in drivers for j in rev_sp) >= req_sp_num)
     m.addConstr(gp.quicksum(x[i, j] for i in drivers for j in rev_sp) >= min(req_sp_num,len(driver_set)))
+    print('RHS',min(req_sp_num,len(driver_set)))
     #46
     m.addConstrs(gp.quicksum(x[i, j] for j in customers) == 1 for i in drivers)
     #m.addConstrs(gp.quicksum(x[i, j] for j in customers) <= 1 for i in drivers)
@@ -99,8 +100,8 @@ def LinearizedSubsidyProblem(driver_set, customers_set, v_old, ro, times, end_ti
     m.addConstr(gp.quicksum(cso[j] for j in customers) == sum_i + (driver_num)*(customer_num - driver_num))
     #50
     m.addConstrs(cso[j] <= driver_num for j in customers)
-    #51 시간 제약식
-    m.addConstrs(x[i,j]*times[i,j] <= end_times[i,j] for i in drivers for j in customers)
+    #51 시간 제약식 -> 기존에 없던 제약식.
+    m.addConstrs(x[i,j]*times[i,j] <= end_times[i,j]  for i in drivers for j in customers)
     for i in drivers:
         for j in customers:
             if lower_b != False:
@@ -139,6 +140,7 @@ def LinearizedSubsidyProblem(driver_set, customers_set, v_old, ro, times, end_ti
     y_list = y_list.reshape(driver_num, customer_num)
     print(y_list)
     """
+    #print(m.getVars()[:10])
     try:
         print('Obj val: %g' % m.objVal, "Solver", solver)
         res = ASP.printer(m.getVars(), [], len(drivers), len(customers))

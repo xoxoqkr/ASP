@@ -96,9 +96,11 @@ def SingleDataSaver(scenario_info, customer_set, driver_set ,thres, speed, now_t
     idle_t2 = []
     fee_analyzer = []
     subsidy_analyzer = []
-    for slot_num in range(int(math.ceil(now_time / 60))):
+    idle_analyzer = []
+    for slot_num in range(max(int(math.ceil(now_time / 60)),15)):
         fee_analyzer.append([])
         subsidy_analyzer.append([])
+        idle_analyzer.append([])
     #fee_analyzer = []*(16) #[[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]]
     #subsidy_analyzer = []*(16) #[[], [], [], [], [], [], [], [], [], [], [], [], [], [], []]
     for driver_name in driver_set:
@@ -119,6 +121,11 @@ def SingleDataSaver(scenario_info, customer_set, driver_set ,thres, speed, now_t
         for info in driver.subsidy_analyze:
             if len(info) > 0:
                 subsidy_analyzer[time_slot].append(sum(info))
+            time_slot += 1
+        time_slot = 0
+        for info in driver.idle_analyze:
+            if len(info) > 0:
+                idle_analyzer[time_slot].append(sum(info))
             time_slot += 1
     idle_t1 = round(sum(idle_t1)/len(idle_t1),2)
     idle_t2 = round(sum(idle_t2) / len(idle_t2), 2)
@@ -182,13 +189,16 @@ def SingleDataSaver(scenario_info, customer_set, driver_set ,thres, speed, now_t
     for info in subsidy_analyzer:
         infos.append(sum(info))
     infos.append('//')
-    try:
+    for info in idle_analyzer:
+        infos.append(sum(info))
+    infos.append('//')
+    if len(fees) > 0:
         infos.append(round(np.mean(fees),2))
         infos.append(round(np.std(fees),2))
         infos.append(max(fees))
         infos.append(min(fees))
         infos.append('//')
-    except:
+    else:
         infos += ['N/A','N/A','N/A','N/A','//']
     return infos
 
@@ -212,6 +222,8 @@ def DataSaver4_summary(infos, saved_name = 'None'):
               ,'None','원거리 서비스 고객 수','기사 선택까지 시간','유휴시간0 평균','유휴시간1 평균','//'
               ,'시간대별 기본금0-1', '1-2', '2-3', '3-4','4-5', '5-6', '6-7', '7-8', '8-9', '9-10', '10-11', '11-12', '12-13', '13-14', '14-15','//'
               ,'시간대별 보조금0-1', '1-2', '2-3', '3-4', '4-5', '5-6', '6-7', '7-8', '8-9', '9-10', '10-11', '11-12', '12-13', '13-14', '14-15', '//'
+              ,'시간대별 idle_t 0-1', '1-2', '2-3', '3-4', '4-5', '5-6', '6-7', '7-8', '8-9', '9-10', '10-11', '11-12', '12-13', '13-14', '14-15', '//'
+
             ,'mean', 'std', 'max', 'min','//' #여기 까지가 single save에 저장되는 것.
               ,'제안된 보조금 수','제안된 보조금 수0-1', '1-2', '2-3', '3-4', '4-5', '5-6', '6-7', '7-8', '8-9', '9-10', '10-11', '11-12', '12-13','13-14', '14-15', '//']
     now = datetime.today().isoformat()
@@ -239,7 +251,10 @@ def DataSaver4_summary(infos, saved_name = 'None'):
                         #print(info)
                         tem.append(info[val_index])
                     try:
-                        sc_info1.append(round(sum(tem)/len(tem),2))
+                        if sum(tem) > 1 :
+                            sc_info1.append(round(sum(tem)/len(tem),2))
+                        else:
+                            sc_info1.append(round(sum(tem) / len(tem),6))
                     except:
                         sc_info1.append('None')
             master_infos.append(sc_info1)

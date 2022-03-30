@@ -25,7 +25,7 @@ def indexReturner2DBiggerThan0(list2D, val = 0):
     return res
 
 
-def FeeUpdater(rev_v, customer_set, riders, rider_set ,cts_name, now_time, subsidy_offer = [],subsidy_offer_count= [], upper = 1000, print_para = False, LP_type = 'LP3'):
+def FeeUpdater(rev_v, customer_set, riders, rider_set ,cts_name, now_time, subsidy_offer = [],subsidy_offer_count= [], upper = 1000, print_para = False, LP_type = 'LP3', delta = 10):
     """
     계산한 보조금을 고객들에게 반영함.
     :param rev_v: 계산된 보조금 결과
@@ -50,18 +50,20 @@ def FeeUpdater(rev_v, customer_set, riders, rider_set ,cts_name, now_time, subsi
             else:
                 divider = 1
                 input('보조금 할당 ERROR1')
-            subsidy = info[2]/divider + 5
-            if subsidy < upper:
+            subsidy = info[2]/divider + delta
+            if 0 < subsidy < upper:
                 print('보조금',subsidy)
+                if customer.fee[1:3] != [subsidy,rider.name]:
+                    subsidy_offer.append([rider.name, customer.name])
+                    subsidy_offer_count[int(now_time // 60)] += 1
                 customer.fee[1] = subsidy
                 customer.fee[2] = rider.name
                 customer.fee[3] = now_time
+                customer.fee_history.append(now_time)
                 if customer.fee_t == None:
                     customer.fee_t = now_time
-                subsidy_offer.append([rider.name, customer.name])
                 if print_para == True:
                     print('Fee offer to rider#',rider.name,'//end T:', round(rider.end_time,2),'//Rider left t',round(rider.gen_time + 120,2),'//CT #',customer.name,'//CT end T', customer.time_info[0] + customer.time_info[5],'$',customer.fee[0] + customer.fee[1], '//offered$', customer.fee[1])
-                subsidy_offer_count[int(now_time//60)] += 1
             else:
                 print('보조금 금액',subsidy, '고객이름',customer.name)
                 #input('보조금 할당 ERROR2')
@@ -153,7 +155,7 @@ def InputValueReform(v_old, times, end_times, customer_num,rider_num,upper, dumm
         add_array6 = np.zeros((rider_num, rider_num))
         for i in range(0,len(add_array5)):
             for j in range(0,len(add_array5[i])):
-                add_array5[i,j] = 1000
+                add_array5[i,j] = 0
         times = np.hstack((times, add_array6))
         end_times = np.hstack((end_times, add_array5))
     return v_old, times, end_times
@@ -310,7 +312,7 @@ def SystemRunner(env, rider_set, customer_set, run_time, interval=10, subsidy_of
         # 라이더 체크 확인
         un_cts = Basic.UnloadedCustomer(customer_set, env.now)  # 아직 실리지 않은 고객 식별
         v_old, rider_names, cts_name, d_orders_res, times, end_times , fee_weights = ProblemInput(rider_set, customer_set, env.now, upper=upper,
-                                                                                                  dummy_customer_para = dummy_customer_para,
+                                                                                                  dummy_customer_para = True,
                                                                                                   who = 'test_platform', LP_type = LP_type,
                                                                                                   toCenter = toCenter)  # 문제의 입력 값을 계산
         test_names1 = []
@@ -320,7 +322,7 @@ def SystemRunner(env, rider_set, customer_set, run_time, interval=10, subsidy_of
         test_names1.sort(key=operator.itemgetter(1))
         print('실제 주문 선택 라이더12', test_names1)
         #urgent_cts, tem1 = Basic.WhoGetPriority(un_cts, len(rider_names), env.now, time_thres=time_thres)  # C_p 계산
-        urgent_cts, tem1 = Basic.WhoGetPriority(un_cts, 100, env.now, time_thres=time_thres)  # C_p 계산
+        urgent_cts, tem1 = Basic.WhoGetPriority(un_cts, 100, env.now, time_thres=0.8, speed =  rider_set[0].speed, add_cal= False, riders = rider_set, ava_rider_num = len(rider_names))  # C_p 계산
         expected_cts, dummy = ExpectedSCustomer(rider_set, rider_names, d_orders_res, customer_set, round(env.now,2) , toCenter = toCenter, who = 'platform')
         print('T {} 데이터 확인 급한 고객;{} 예상 선택 고객;{};라이더 선택 순서; {};주문 선택 가능한 라이더들;{}'.format(int(env.now), urgent_cts,expected_cts,d_orders_res,rider_names))
         if sorted(urgent_cts) == sorted(expected_cts) or len(urgent_cts) == 0 or len(rider_names) <= 1 or len(
@@ -334,16 +336,22 @@ def SystemRunner(env, rider_set, customer_set, run_time, interval=10, subsidy_of
         else:  # peak para 는 항상 참인 파라메터
             if subsidy_policy == 'step':
                 subsidy_offer, subsidy_offer_count = AllSubsidy(customer_set, env.now, subsidy_offer=subsidy_offer,
-                                                                subsidy_offer_count=subsidy_offer_count)
+                                                                subsidy_offer_count=subsidy_offer_count, speed = rider_set[0].speed)
             elif subsidy_policy == 'MIP':
                 print('IP 풀이O', env.now,'급한 고객 수:', len(urgent_cts),'급한고객',urgent_cts,'// 예상 매칭 고객 수:', expected_cts, '//라이더 순서', d_orders_res)
                 print('가능한 라이더수:', len(rider_names), '//고객 수:', len(cts_name), '//No_subsidy:', subsidy_policy)
                 print('V_old', np.shape(v_old), '//Time:', np.shape(times), '//EndTime:', np.shape(end_times))
                 res, vars = lpg.LinearizedSubsidyProblem(rider_names, cts_name, v_old, d_orders_res, times, end_times,
                                                          fee_weights = fee_weights, lower_b=0, sp=urgent_cts, print_gurobi=False, upper_b=upper)
-                print(res)
-                #input('문제 풀림')
+                #print(res)
+                #input('문제 확인')
                 if res == False:
+                    #res, vars = lpg.LinearizedSubsidyProblem(rider_names, cts_name, v_old, d_orders_res, times,
+                    #                                         end_times,
+                    #                                         fee_weights=fee_weights, lower_b=0, sp=urgent_cts,
+                    #                                         print_gurobi=False, upper_b=10000)
+                    #print(res)
+                    #input('문제 확인')
                     time_con_num = list(range(0, len(urgent_cts)))
                     time_con_num.sort(reverse=True)
                     try_num = 0
