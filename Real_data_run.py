@@ -38,10 +38,10 @@ global output_rider_coeff
 global rider_coeff_para
 global add_file_info
 global start_pos3
+global slack_time
 
 
-
-sc_name = str(weight_update_function) + ';' + subsidy_policy + ';' + str(upper) + ';' + add_file_info
+sc_name = str(weight_update_function) + ';' + subsidy_policy + ';U;' + str(upper) + ';ST;'+str(slack_time)+';I;' + add_file_info
 #driver_num = 13
 insert_thres = 1
 mean_list = [0,0,0]
@@ -110,6 +110,7 @@ weight_sum = True
 revise_para = True
 ###Running
 solver_running_interval = 5
+sc_name += 'SI;' + str(solver_running_interval) + ';'
 #upper = 10000 #todo 20220228: 보조금 상한 지급액
 checker = False
 print_para = True
@@ -148,7 +149,8 @@ else:
                                                  subsidy_offer=subsidy_offer, subsidy_offer_count=subsidy_offer_count,
                                                  upper=upper,
                                                  checker=checker, toCenter=toCenter,
-                                                 dummy_customer_para=dummy_customer_para, LP_type = LP_type, subsidy_policy = subsidy_policy))
+                                                 dummy_customer_para=dummy_customer_para, LP_type = LP_type, subsidy_policy = subsidy_policy,
+                                                 slack_time = slack_time))
 
 
 
@@ -204,7 +206,48 @@ for rider_name in RIDER_DICT:
     earn_data.append(sum(r_earing))
     f.write(content)
 f.close()
+#보조금 지급 고객 정보
+kpi1 = 0
+kpi2 = 0
+kpi3 = 0
+kpi4 = []
+kpi5 = []
+for name4 in CUSTOMER_DICT:
+    ct = CUSTOMER_DICT[name4]
+    if len(ct.fee_history) > 0:
+        if ct.time_info[4] == None:
+            kpi2 += 1
+        else:
+            kpi1 += 1
+    if ct.fee[1] > 0 and ct.time_info[4] != None:
+        kpi3 += 1
+    if ct.fee[1] > 0:
+        try:
+            kpi5.append(max(ct.fee_history) - min(ct.fee_history))
+        except:
+            kpi5.append(0)
+        if subsidy_policy == 'step':
+            kpi4.append((ct.fee[1]/ct.fee[0])*10)
+        else:
+            kpi4.append(len(ct.fee_history))
+
+
+if kpi1 + kpi2 == 0:
+    add_data2 = ['//',None,None]
+else:
+    add_data2 = ['//',kpi1 / (kpi1 + kpi2), kpi3 / (kpi1 + kpi2)]
+try:
+    add_data2.append(sum(kpi4)/len(kpi4))
+except:
+    add_data2.append(None)
+try:
+    add_data2.append(sum(kpi5) / len(kpi5))
+except:
+    add_data2.append(None)
+
+saved_data_info += add_data2
 saved_data_info += earn_data
+
 
 saved_xlxs.append([saved_data_info])
 #Save_result

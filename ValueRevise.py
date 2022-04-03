@@ -365,6 +365,7 @@ def IncentiveForValueWeightExpectationLP3(rider, customer_set, LP_type = 'LP3', 
                 if 0 < required_incentive < upper and rider.LP3p_coeff[2] > 0:
                     customer_set[info[0]].fee[1] = required_incentive
                     customer_set[info[0]].fee[2] = 'all'
+                    customer.fee_history.append(0)
                     print_res.append([info[0], required_incentive, customer_set[info[0]].time_info])
             except:
                 pass

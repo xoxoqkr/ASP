@@ -10,7 +10,8 @@ import numpy
 
 
 
-def LinearizedSubsidyProblem(driver_set, customers_set, v_old, ro, times, end_times, fee_weights = [],lower_b = False, upper_b = False, sp=None, print_gurobi=False,  solver=-1, delta = 1, relax = 100, min_subsidy = 0):
+def LinearizedSubsidyProblem(driver_set, customers_set, v_old, ro, times, end_times, fee_weights = [],lower_b = False, upper_b = False, sp=None, print_gurobi=False,  solver=-1, delta = 1, relax = 100, min_subsidy = 0,
+                             slack_time = 0):
     """
     선형화된 버전의 보조금 문제
     :param driver_set: 가능한 라이더 수
@@ -100,14 +101,28 @@ def LinearizedSubsidyProblem(driver_set, customers_set, v_old, ro, times, end_ti
     m.addConstr(gp.quicksum(cso[j] for j in customers) == sum_i + (driver_num)*(customer_num - driver_num))
     #50
     m.addConstrs(cso[j] <= driver_num for j in customers)
-    #51 시간 제약식 -> 기존에 없던 제약식.
-    m.addConstrs(x[i,j]*times[i,j] <= end_times[i,j]  for i in drivers for j in customers)
+    #51 시간 제약식 -> 기존에 없던 제약식
+    #m.addConstrs(x[i,j]*times[i,j] <= end_times[i,j] + slack_time  for i in drivers for j in customers) rev_1
+    #m.addConstrs(x[i, j] * times[i, j] <= end_times[i, j]*(1 + abs(0.5*times[i,j]/end_times[i, j])) for i in drivers for j in customers) rev_2
+    m.addConstrs(x[i, j] * times[i, j] <= end_times[i, j] for i in drivers for j in customers)
+    """
+    for i in drivers:
+        for j in customers:
+            try:
+                add_t = 1 +(0.5*times[i,j]/end_times[i, j])
+            except:
+                add_t = 1
+            m.addConstr(x[i, j] * times[i, j] <= end_times[i, j]*add_t)
+    """
     for i in drivers:
         for j in customers:
             if lower_b != False:
                 m.addConstr(lower_b <= v[i, j])
             if upper_b != False:
-                m.addConstr(v[i, j]/fee_weights[i] <= upper_b)
+                if times[i,j] <= end_times[i,j]:
+                    m.addConstr(v[i, j]/fee_weights[i] <= upper_b)
+                else:
+                    m.addConstr(v[i, j] / fee_weights[i] <= upper_b * 1.5)
     if print_gurobi == False:
         m.setParam(GRB.Param.OutputFlag, 0)
     m.Params.method = solver  # -1은 auto dedection이며, 1~5에 대한 차이.

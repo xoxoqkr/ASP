@@ -193,7 +193,8 @@ def ProblemInput(rider_set, customer_set, now_time, minus_para = False, dummy_cu
         for info in ct_infos:
             customer = customer_set[info[0]]
             values.append(info[1])
-            end_times.append(customer.time_info[0] + customer.time_info[5])
+            #end_times.append(customer.time_info[0] + customer.time_info[5]) #todo : 0403 수정본.
+            end_times.append((1 + 0.2*((now_time + info[4])/(customer.time_info[0] + customer.time_info[5])))*(customer.time_info[0] + customer.time_info[5]))
             times.append(now_time + info[4])
     ###numpy 형식으로 재 저의###
     v_old = np.array(values).reshape(len(riders), len(cts))
@@ -284,7 +285,7 @@ def ExpectedSCustomer(rider_set, rider_names, d_orders_res, customer_set, now_ti
 
 def SystemRunner(env, rider_set, customer_set, run_time, interval=10, subsidy_offer=[],
                  subsidy_offer_count=[], time_thres=0.8, upper=10000, checker=False, toCenter=True, dummy_customer_para = False,weight_sum=3, LP_type = 'LP2',
-                 subsidy_policy = 'MIP'):
+                 subsidy_policy = 'MIP', slack_time = 0):
     """
     입력 값에 따라 시뮬레이션 진행
     No_subsidy에 따라 2가지 상황이 가능.
@@ -342,7 +343,8 @@ def SystemRunner(env, rider_set, customer_set, run_time, interval=10, subsidy_of
                 print('가능한 라이더수:', len(rider_names), '//고객 수:', len(cts_name), '//No_subsidy:', subsidy_policy)
                 print('V_old', np.shape(v_old), '//Time:', np.shape(times), '//EndTime:', np.shape(end_times))
                 res, vars = lpg.LinearizedSubsidyProblem(rider_names, cts_name, v_old, d_orders_res, times, end_times,
-                                                         fee_weights = fee_weights, lower_b=0, sp=urgent_cts, print_gurobi=False, upper_b=upper)
+                                                         fee_weights = fee_weights, lower_b=0, sp=urgent_cts, print_gurobi=False, upper_b=upper,
+                                                         slack_time = slack_time)
                 #print(res)
                 #input('문제 확인')
                 if res == False:
@@ -358,7 +360,7 @@ def SystemRunner(env, rider_set, customer_set, run_time, interval=10, subsidy_of
                     for num in time_con_num:
                         res, vars = lpg.LinearizedSubsidyProblem(rider_names, cts_name, v_old, d_orders_res, times,
                                                                  end_times, fee_weights = fee_weights, lower_b=0, sp=urgent_cts, print_gurobi=False,
-                                                                 relax=num, upper_b=upper)
+                                                                 relax=num, upper_b=upper,slack_time = slack_time)
                         try_num += 1
                         if res != False:
                             print('Relaxing Try #', time_con_num.index(num))
@@ -369,7 +371,7 @@ def SystemRunner(env, rider_set, customer_set, run_time, interval=10, subsidy_of
                     if feasibility == True:
                         print('Fee updater')
                         FeeUpdater(res2, customer_set, rider_names, rider_set, cts_name, env.now,
-                                   subsidy_offer=subsidy_offer, subsidy_offer_count=subsidy_offer_count, upper=upper, print_para= True)
+                                   subsidy_offer=subsidy_offer, subsidy_offer_count=subsidy_offer_count, upper= 2*upper, print_para= True)
             else:
                 pass
             #input('결과 확인')
