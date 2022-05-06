@@ -249,7 +249,7 @@ def DriverMaker(env, driver_dict, customer_set ,speed = 2, end_time = 800, inter
                 toCenter = True, error = 0, run_time = 900, pref_info = None, driver_left_time = 120, print_para = False,
                 start_pos = [26,26], value_cal_type = 'return', num_gen = 10, coeff_revise_option = False, weight_sum = False,
                 ExpectedCustomerPreference = [0,250,500,750], rider_coeff = None, re_new = True, day_count = 0, yesterday_RIDER_DICT = None,
-                weight_update_function = True, exp_rider_coeff = None, subsidyForweight = False):
+                weight_update_function = True, exp_rider_coeff = None, subsidyForweight = False, LP_type = 'LP3'):
     """
     주어진 입력값으로 행동하는 라이더를 생성
     :param env: simpy Environment
@@ -280,7 +280,7 @@ def DriverMaker(env, driver_dict, customer_set ,speed = 2, end_time = 800, inter
         rider = Basic.Rider(env, name, speed, customer_set, toCenter = toCenter, error = error, run_time = run_time,
                             pref_info= pref_info, left_time=driver_left_time, print_para = print_para, start_pos= start_point,
                             value_cal_type = value_cal_type, coeff_revise_option = coeff_revise_option, weight_sum = weight_sum,
-                            ExpectedCustomerPreference = ExpectedCustomerPreference)
+                            ExpectedCustomerPreference = ExpectedCustomerPreference, LP_type = LP_type)
         #input('day_count {}, renew{}, yesterday_RIDER_DICT {}'.format(day_count, re_new,yesterday_RIDER_DICT))
         if day_count > 0 and re_new == False and yesterday_RIDER_DICT != None:
             #input('라이더 갱신 시도')
@@ -300,13 +300,20 @@ def DriverMaker(env, driver_dict, customer_set ,speed = 2, end_time = 800, inter
         if rider_coeff != None:
             rider.coeff = rider_coeff[name]
             if weight_update_function == True:
-                rider.LP3p_coeff = rider_coeff[name] #todo: 0315 LP3 실험을 위한 장치
+                if LP_type == 'LP1':
+                    rider.LP1p_coeff = rider_coeff[name] #todo: 0315 LP3 실험을 위한 장치
+                else:
+                    rider.LP3p_coeff = rider_coeff[name]
                 pass
             else:
                 pass
         if exp_rider_coeff != None:
-            rider.LP3p_coeff = exp_rider_coeff[name]
+            #rider.LP3p_coeff = exp_rider_coeff[name]
             #rider.LP3History.append(rider.LP3p_coeff)
+            if LP_type == 'LP1':
+                rider.LP1p_coeff = exp_rider_coeff[name]
+            else:
+                rider.LP3p_coeff = exp_rider_coeff[name]
         if subsidyForweight == True:
             rider.subsidyForweight = True
         driver_dict[name] = rider

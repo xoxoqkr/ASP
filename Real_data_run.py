@@ -39,9 +39,10 @@ global rider_coeff_para
 global add_file_info
 global start_pos3
 global slack_time
+global WEP_LP_type
+global customer_wait_t
 
-
-sc_name = str(weight_update_function) + ';' + subsidy_policy + ';U;' + str(upper) + ';ST;'+str(slack_time)+';I;' + add_file_info
+sc_name = str(weight_update_function) + ';' + subsidy_policy + ';U;' + str(upper) + ';ST;'+str(slack_time)+';I;' + add_file_info + ';' + WEP_LP_type + ';CW;' + str(customer_wait_t)
 #driver_num = 13
 insert_thres = 1
 mean_list = [0,0,0]
@@ -89,14 +90,14 @@ store_loc_data = InstanceGen_class.LocDataTransformer('송파구store_Coor.txt',
 customer_loc_data = InstanceGen_class.LocDataTransformer('송파구house_Coor.txt', index = 0)
 #customer_loc_data += InstanceGen_class.LocDataTransformer('송파구commercial_Coor.txt', index = len(customer_loc_data))
 
-harversion_dist_data = np.load('송파구_test0311_Haversine_Distance_data0.npy')
-shortestpath_dist_data = np.load('송파구_test0311_shortest_path_Distance_data0.npy')
+harversion_dist_data = np.load('data_rev/송파구_test0311_Haversine_Distance_data3.npy')
+shortestpath_dist_data = np.load('data_rev/송파구_test0311_shortest_path_Distance_data3.npy')
 customer_gen_numbers = 350
 
 #파라메터
 speed = 260 #meter per minute 15.6km/hr
 toCenter = False
-customer_wait_time = 90
+customer_wait_time = customer_wait_t
 fee = None
 data_dir = '데이터/new_data_2_RandomCluster.txt'
 rider_intervals = InstanceGen_class.RiderGenInterval('데이터/interval_rider_data3.csv')
@@ -133,7 +134,7 @@ env.process(InstanceGen_class.DriverMaker(env, RIDER_DICT, CUSTOMER_DICT, end_ti
                                           run_time=driver_make_time, error=np.random.choice(driver_error_pool), pref_info = 'test_rider',
                                           driver_left_time = driver_left_time, num_gen= driver_num,ExpectedCustomerPreference=ExpectedCustomerPreference,
                                           rider_coeff=rider_coeff_list, start_pos = start_pos3, weight_update_function = weight_update_function,
-                                          exp_rider_coeff = expected_rider_coeff_list, subsidyForweight = rider_coeff_para))
+                                          exp_rider_coeff = expected_rider_coeff_list, subsidyForweight = rider_coeff_para, LP_type=WEP_LP_type))
 #env.process(InstanceGen_class.CustomerGeneratorForIP(env, CUSTOMER_DICT, data_dir + '.txt', input_fee=fee, input_loc= input_para,
 #                                                     type_num = type_num, std = std, input_instances= input_instances))
 #env.process(InstanceGen_class.CustomerGeneratorForNPYData(env, CUSTOMER_DICT, store_loc_data, customer_loc_data,harversion_dist_data,shortestpath_dist_data,customer_gen_numbers,
@@ -149,7 +150,7 @@ else:
                                                  subsidy_offer=subsidy_offer, subsidy_offer_count=subsidy_offer_count,
                                                  upper=upper,
                                                  checker=checker, toCenter=toCenter,
-                                                 dummy_customer_para=dummy_customer_para, LP_type = LP_type, subsidy_policy = subsidy_policy,
+                                                 dummy_customer_para=dummy_customer_para, LP_type = WEP_LP_type, subsidy_policy = subsidy_policy,
                                                  slack_time = slack_time))
 
 
@@ -170,9 +171,10 @@ for ct_name in CUSTOMER_DICT:
     #input('확인1')
     try:
         min_val = min(ct.fee_history)
-        test_c += (str(min_val) + '; \n')
+        test_c += (str(min_val) + ';')
     except:
-        test_c += 'None; \n'
+        test_c += 'None;'
+    test_c += str(ct.fee_history) + '\n'
     #input('확인2')
     f_c.write(test_c)
 f_c.write('End \n')
@@ -188,7 +190,10 @@ saved_data_info = DataSave(sc_name, RIDER_DICT, CUSTOMER_DICT, insert_thres, spe
 ave_euc_error = []
 for rider_name in RIDER_DICT:
     c = RIDER_DICT[rider_name].coeff
-    c1 = RIDER_DICT[rider_name].LP3p_coeff
+    if WEP_LP_type == 'LP1':
+        c1 = RIDER_DICT[rider_name].LP1p_coeff
+    else:
+        c1 = RIDER_DICT[rider_name].LP3p_coeff
     val = float(math.sqrt((c[0] - c1[0])**2 + (c[1] - c1[1])**2 + (c[2] - c1[2])**2))
     ave_euc_error.append(val)
 try:
@@ -351,15 +356,18 @@ print('서비스된 고객 수 {} : 평균 거리 {} : 수수료 기준 거리 {
 
 ite_range = range(0,30,5)
 if rider_coeff_para == True:
-    f = open("COEFF Check.txt", 'a')
+    f = open("COEFF Check_org.txt", 'a')
     for ite_ in ite_range:
         tem = []
         for rider_name in RIDER_DICT:
             try:
-                ite1 = min(len(RIDER_DICT[rider_name].LP3History)-1, ite_)
-                tem.append(RIDER_DICT[rider_name].LP3History[ite1][:3])
+                #ite1 = min(len(RIDER_DICT[rider_name].LP3History)-1, ite_)
+                #tem.append(RIDER_DICT[rider_name].LP3History[ite1][:3])
+                ite1 = min(len(RIDER_DICT[rider_name].LP1History) - 1, ite_)
+                tem.append(RIDER_DICT[rider_name].LP1History[ite1][:3])
             except:
-                tem.append(RIDER_DICT[rider_name].LP3p_coeff[:3])
+                #tem.append(RIDER_DICT[rider_name].LP3p_coeff[-1][:3])
+                tem.append(RIDER_DICT[rider_name].LP1p_coeff[-1][:3])
         output_rider_coeff.append(tem)
         f.write(str(ite_) + 'start1 \n')
         f.write(str(tem) + '\n')

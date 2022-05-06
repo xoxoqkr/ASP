@@ -13,7 +13,7 @@ from ValueRevise import RiderWeightUpdater, RiderWeightUpdater2,IncentiveForValu
 
 
 global shortest_path_data_np
-shortest_path_data_np = np.load('송파구_test0311_shortest_path_Distance_data0.npy')
+shortest_path_data_np = np.load('data_rev/송파구_test0311_shortest_path_Distance_data3.npy')
 
 
 class Customer(object):
@@ -67,7 +67,7 @@ class Customer(object):
 class Rider(object):
     def __init__(self, env, name, speed, customer_set, wageForHr = 10000, wait = True, toCenter = True, run_time = 900, error = 0,
                  ExpectedCustomerPreference = [0,250,500,750], pref_info = 'None', save_info = False, left_time = 120, print_para = False,
-                 start_pos = [26,26], value_cal_type = 'return',coeff_revise_option = False, weight_sum = False, Data = None):
+                 start_pos = [26,26], value_cal_type = 'return',coeff_revise_option = False, weight_sum = False, Data = None, LP_type = 'LP3'):
         """
         라이더 class
         :param env: simpy Environment
@@ -142,6 +142,7 @@ class Rider(object):
         self.validations_detail_abs = [[], [], [], []]
         self.weight_update_function = False
         self.subsidyForweight = False
+        self.LP_type = LP_type
         env.process(self.Runner(env, customer_set, toCenter = toCenter, pref = pref_info, save_info = save_info,
                                 print_para = print_para,coeff_revise_option = coeff_revise_option, weight_sum= weight_sum, Data= Data))
         env.process(self.RiderLeft(left_time))
@@ -233,7 +234,9 @@ class Rider(object):
             if len(self.veh.put_queue) == 0 and self.wait == False:
                 #print('Rider', self.name, 'assign1 at', env.now)
                 if self.subsidyForweight == True:
-                    IncentiveForValueWeightExpectationLP3(self, customer_set, LP_type='LP3', upper=1000, slack1=1)
+                    print('라이더', self.LP_type)
+                    #input('확인1')
+                    IncentiveForValueWeightExpectationLP3(self, customer_set, LP_type=self.LP_type, upper=1000, slack1=1)
                 ct_name, infos = self.CustomerSelector(customer_set, toCenter = toCenter, pref = pref, save_info = save_info, print_para = True)
                 if self.subsidyForweight == True and ct_name != None: #지급된 보조금 초기화
                     for customer_name in customer_set:
@@ -259,9 +262,11 @@ class Rider(object):
                             print('갱신 확인1 라이더 {}/LP1{} LP2 {} LP3{}'.format(self.name, self.LP1p_coeff, self.LP2p_coeff,
                                                                             self.LP3p_coeff))
                             #RiderWeightUpdater(self, customer_set, weight_sum = True, beta=1) #todo 220225 : 라이더가 선택후 각 방식에 의해 rider weighr 갱신 수행
-                            RiderWeightUpdater2(self, customer_set, weight_sum= True, LP_type='LP3', trigger_type='Always')
+                            RiderWeightUpdater2(self, customer_set, weight_sum= True, LP_type=self.LP_type, trigger_type='Always')
                             print('라이더 가중치 {}'.format(self.coeff))
                             print('갱신 확인2 라이더 {}/LP1{} LP2 {} LP3{}'.format(self.name, self.LP1p_coeff, self.LP2p_coeff, self.LP3p_coeff))
+                            print('라이더', self.LP_type)
+                            #input('확인2')
                         #print('선택 정보 저장 {}'.format())
                 #print('Rider',self.name,'assign2',ct_name, 'at', env.now)
                 if infos == None:
@@ -299,10 +304,15 @@ class Rider(object):
                     self.choice.append([ct_name, round(env.now,4)])
                     ct = customer_set[ct_name]
                     self.now_ct = ct.location
-                    self.earn_fee.append(ct.fee[1])
                     self.total_earn.append(ct.fee[0])
-                    if ct.fee[1] > 0 and ct.fee[2] == self.name:
+                    if ct.fee[1] > 0 and (ct.fee[2] == self.name or ct.fee[2] == 'all'):
+                        self.earn_fee.append(ct.fee[1])
                         self.total_earn.append(ct.fee[1])
+                        try:
+                            self.subsidy_analyze[int(env.now // 60)].append(ct.fee[1])
+                        except:
+                            input('subsidy_analyze 고장')
+                            pass
                         #ct.fee_t = env.now
                         #input('고객{} 보조금{}'.format(ct.name, ct.fee))
                         pass
@@ -315,7 +325,6 @@ class Rider(object):
                         print(env.now, self.fee_analyze)
                     try:
                         self.fee_analyze[int(env.now // 60)].append(ct.fee[0])
-                        self.subsidy_analyze[int(env.now // 60)].append(ct.fee[1])
                     except:
                         input('fee_analyze 고장')
                         pass

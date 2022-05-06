@@ -361,9 +361,9 @@ def ReviseCoeffAP1(selected, others, org_coeff, past_data = [], Big_M = 1000, we
             dummy_index += 1
             data_index += 1
     #풀이
-    m.Params.method = 2
-    #m.Params.Method = 2  # barrier
-    #m.Params.Crossover = 0  # no crossover
+    #m.Params.method = 2
+    m.Params.Method = 2  # barrier
+    m.Params.Crossover = 0  # no crossover
     m.optimize()
     exe_t = m.Runtime
     #print(m.display())

@@ -68,8 +68,10 @@ def SingleDataSaver(scenario_info, customer_set, driver_set ,thres, speed, now_t
                 if s_val[index] <= s_ltd < s_val[index + 1]:
                     s_ltds[index].append(s_ltd)
                     break
-            ct_paid_fee += (ct.fee[0] + ct.fee[1])
-            total_paid_subsidy.append(ct.fee[1])
+            ct_paid_fee += ct.fee[0]
+            if ct.fee[2] == 'all' or ct.fee[2] == ct.server_info[0]:
+                total_paid_subsidy.append(ct.fee[1])
+                ct_paid_fee += ct.fee[1]
             if ct.fee[1] > 0:
                 subsidy_paid_ct_num += 1
                 fees.append(ct.fee[1])
@@ -89,7 +91,10 @@ def SingleDataSaver(scenario_info, customer_set, driver_set ,thres, speed, now_t
         infos.append(len(t))
     infos.append('//')
     infos.append(int(sum(total_paid_subsidy)))
-    infos.append(int(sum(total_paid_subsidy)/len(total_paid_subsidy)))
+    try:
+        infos.append(int(sum(total_paid_subsidy)/len(total_paid_subsidy)))
+    except:
+        infos.append('None')
     infos.append(subsidy_paid_ct_num)
     working_time = []
     idle_t1 = []
@@ -131,13 +136,13 @@ def SingleDataSaver(scenario_info, customer_set, driver_set ,thres, speed, now_t
     idle_t2 = round(sum(idle_t2) / len(idle_t2), 2)
     infos.append('//')
     infos.append(fee_ratio)
-    infos.append(ct_paid_fee*fee_ratio - int(sum(total_paid_subsidy)))
-    rider_total_earn = ct_paid_fee * (1 - fee_ratio) + int(sum(total_paid_subsidy))
+    infos.append(ct_paid_fee*fee_ratio)
+    rider_total_earn = ct_paid_fee * (1 - fee_ratio)
     infos.append(rider_total_earn)
     infos.append(rider_total_earn/len(total_paid_fees))
     infos.append(rider_total_earn /(sum(working_time)/60))
     infos.append(len(total_paid_fees))
-    infos.append(ct_paid_fee * fee_ratio - int(sum(total_paid_subsidy)))
+    infos.append(int(sum(total_paid_subsidy)))
     infos.append('//')
     infos.append(total_dist/len(ltd_ave))
     infos.append('//')

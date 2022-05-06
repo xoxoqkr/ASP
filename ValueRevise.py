@@ -361,8 +361,17 @@ def IncentiveForValueWeightExpectationLP3(rider, customer_set, LP_type = 'LP3', 
             diff = selected_value - info[1]
             print('diff', diff, selected_value, info[1])
             try:
-                required_incentive = (diff / rider.LP3p_coeff[2])*slack1
-                if 0 < required_incentive < upper and rider.LP3p_coeff[2] > 0:
+                if rider.LP_type == 'LP1':
+                    divider = rider.LP1p_coeff[2]
+                elif rider.LP_type == 'LP2':
+                    divider = rider.LP2p_coeff[2]
+                elif rider.LP_type == 'LP3':
+                    divider = rider.LP3p_coeff[2]
+                else:
+                    divider = 1
+                    input('ERROR')
+                required_incentive = (diff / divider)*slack1
+                if 0 < required_incentive < upper : # and rider.LP3p_coeff[2] > 0:
                     customer_set[info[0]].fee[1] = required_incentive
                     customer_set[info[0]].fee[2] = 'all'
                     customer.fee_history.append(0)
@@ -648,7 +657,7 @@ def LP_Solver(rider, customer_set, p_coefff, LP_type = 'init', trigger_type = 'i
         indexs.reverse()
         past_choices = []
         for index1 in indexs:
-            past_select, past_others = InputCalculate2(rider, customer_set, index=index1,divider=[rider.coeff[0], rider.coeff[2]],)  # 실제 라이더가 선택할 시점의 [-dist_cost, -type_cost, fee]
+            past_select, past_others = InputCalculate2(rider, customer_set, index=index1,divider=[rider.coeff[0], rider.coeff[2]])  # 실제 라이더가 선택할 시점의 [-dist_cost, -type_cost, fee]
             if len(past_others) > 0:
                 past_choices.append([past_select, past_others])
         if LP_type == 'LP1':
